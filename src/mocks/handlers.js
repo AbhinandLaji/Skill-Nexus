@@ -157,6 +157,14 @@ export const handlers = [
     return HttpResponse.json(user);
   }),
 
+  http.get('/api/users/:id', async ({ params }) => {
+    // If we request /api/users/me, it's handled above.
+    // Otherwise, find by ID, or fallback to default user for demo.
+    const user = db.users.find(u => u.id === params.id) || db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
+    await delay();
+    return HttpResponse.json(user);
+  }),
+
   http.patch('/api/users/me', async ({ request }) => {
     const body = await request.json();
     const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
