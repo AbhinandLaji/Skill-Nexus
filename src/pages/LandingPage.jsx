@@ -60,23 +60,18 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="relative z-10 flex flex-col items-center text-center max-w-4xl mx-auto gap-element-gap"
+            className="relative z-10 flex flex-col items-center justify-center text-center max-w-5xl mx-auto gap-element-gap h-full"
           >
-            <div className="flex items-center justify-center gap-2 mb-4 bg-surface-container-high px-4 py-2 rounded-full shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
-              <span className="font-mono-sm text-on-surface-variant">Campus Terminal Beta Live</span>
-            </div>
-            
-            <h1 className="font-display text-on-surface tracking-tighter max-w-3xl leading-[1.1]">
+            <h1 className="font-display text-[62px] text-on-surface tracking-tighter max-w-4xl leading-[1.1]">
               Find your people. <br/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-container to-surface-tint">Build something real.</span>
             </h1>
             
-            <p className="font-body-md text-on-surface-variant max-w-2xl mt-4 mb-8 text-lg">
+            <p className="font-body-md text-on-surface-variant max-w-3xl mt-6 mb-10 text-[23px] leading-relaxed">
               Connecting verified TKMCE students by skill. Drop the noise, find the signal, and ship projects with peers who speak your stack.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 w-full justify-center">
               <Link to="/auth">
                 <motion.button 
                   whileHover={{ scale: 1.02 }}
