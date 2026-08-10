@@ -1,9 +1,11 @@
-const BASE_URL = '/api';
+const BASE_URL = 'http://localhost:5000/api';
+
 
 async function fetcher(endpoint, options = {}) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
       ...options.headers,
     },
     ...options,
@@ -30,14 +32,19 @@ export const api = {
 
   // Teams & Matchmaking
   getTeams: () => fetcher('/teams'),
-  requestToJoinTeam: (teamId) => fetcher(`/teams/${teamId}/join`, { method: 'POST' }),
+  createTeam: (data) => fetcher('/teams', { method: 'POST', body: JSON.stringify(data) }),
   createTeamPost: (data) => fetcher('/teams', { method: 'POST', body: JSON.stringify(data) }),
+  requestToJoinTeam: (teamId) => fetcher(`/teams/${teamId}/join`, { method: 'POST' }),
+  requestJoinTeam: (teamId) => fetcher(`/teams/${teamId}/join`, { method: 'POST' }),
 
   // Mentorship & Opportunities
   getOpportunities: () => fetcher('/opportunities'),
   registerForOpportunity: (id) => fetcher(`/opportunities/${id}/register`, { method: 'POST' }),
   getMentors: () => fetcher('/mentors'),
   requestMentorship: (id) => fetcher(`/mentors/${id}/request`, { method: 'POST' }),
+  getQuestions: () => fetcher('/mentorship/questions'),
+  askQuestion: (data) => fetcher('/mentorship/questions', { method: 'POST', body: JSON.stringify(data) }),
+  answerQuestion: (questionId, data) => fetcher(`/mentorship/questions/${questionId}/answers`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Skills
   getSkills: () => fetcher('/skills'),
@@ -47,17 +54,4 @@ export const api = {
   sendChannelMessage: (data) => fetcher(`/channels/${data.channelId}/messages`, { method: 'POST', body: JSON.stringify(data) }),
   getMessages: (channelId) => fetcher(`/channels/${channelId}/messages`),
   sendMessage: (channelId, data) => fetcher(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify(data) }),
-
-  // Teams
-  getTeams: () => fetcher('/teams'),
-  createTeam: (data) => fetcher('/teams', { method: 'POST', body: JSON.stringify(data) }),
-  requestJoinTeam: (teamId) => fetcher(`/teams/${teamId}/join-request`, { method: 'POST' }),
-
-  // Opportunities
-  getOpportunities: () => fetcher('/opportunities'),
-
-  // Mentorship
-  getQuestions: () => fetcher('/mentorship/questions'),
-  askQuestion: (data) => fetcher('/mentorship/questions', { method: 'POST', body: JSON.stringify(data) }),
-  answerQuestion: (questionId, data) => fetcher(`/mentorship/questions/${questionId}/answers`, { method: 'POST', body: JSON.stringify(data) })
 };

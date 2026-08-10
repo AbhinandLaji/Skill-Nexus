@@ -8,11 +8,44 @@ export const handlers = [
   // Auth
   http.post('/api/auth/register', async ({ request }) => {
     const body = await request.json();
-    const user = db.users[0]; // mock return first user
-    user.name = body.name;
-    user.email = body.email;
+
+    // Check if email already exists
+    const existingUser = db.users.find(
+      user => user.email === body.email.toLowerCase()
+    );
+
+    if (existingUser) {
+      return HttpResponse.json(
+        { error: 'Email already registered' },
+        { status: 409 }
+      );
+    }
+
+    // Create new user
+    const user = {
+      id: crypto.randomUUID(),
+      name: body.name,
+      email: body.email.toLowerCase(),
+      password: body.password,
+      verified: false,
+      batch: body.batch || '',
+      skills: body.skills || [],
+      bio: '',
+      isMentor: false,
+      avatar: null
+    };
+
+    db.users.push(user);
+
     await delay();
-    return HttpResponse.json({ user, token: 'mock-jwt-token' });
+
+    return HttpResponse.json(
+      {
+        user,
+        token: 'mock-jwt-token'
+      },
+      { status: 201 }
+    );
   }),
 
   http.post('/api/users/me', async ({ request }) => {
@@ -21,7 +54,7 @@ export const handlers = [
     const data = await request.json();
     return HttpResponse.json({ user: { ...db.users[0], skills: data.skills } });
   }),
-  
+
   http.patch('/api/users/me', async ({ request }) => {
     // wait a bit
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -37,7 +70,7 @@ export const handlers = [
         projectType: 'Hackathon',
         title: 'AI Agent Swarm Platform',
         description: 'Building a multi-agent framework for automated code reviews. Need backend devs familiar with LangChain.',
-        requiredSkills: [{name: 'Python', match: true}, {name: 'AI/ML', match: true}, {name: 'FastAPI', match: false}],
+        requiredSkills: [{ name: 'Python', match: true }, { name: 'AI/ML', match: true }, { name: 'FastAPI', match: false }],
         authorName: 'Alex C.',
         authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsHJDZxJ1hjDac3CtSnYZ3I5eO5RRiXZ53a0fZDb3Tl4Q92HrghG4uHZMmgtlTMavs46ZXaDIdFGxaotuiudngTwPO9bcLe4qNb_5GO8wABlyN6S18hkqKJHLTb7YKZx1Bak6U-T3he4xOrQqCI583cgDyMqUdDhOanRjsQivenLuqJaEBfajmB3LrxUvW2hlw-yMHiWsGVX5SN7Mxy52l7D87Kt4yuGlC6tPIZGQGPe559tchpdYPiiYKIuFanmdloXwNkJ6lmf3L',
         lookingForCount: 2
@@ -47,7 +80,7 @@ export const handlers = [
         projectType: 'Long-term',
         title: 'Zero-Knowledge Voting App',
         description: 'Creating a decentralized, mathematically provable voting system for campus organizations. Need Rust expertise.',
-        requiredSkills: [{name: 'Rust', match: true}, {name: 'Cryptography', match: true}, {name: 'Next.js', match: false}],
+        requiredSkills: [{ name: 'Rust', match: true }, { name: 'Cryptography', match: true }, { name: 'Next.js', match: false }],
         authorName: 'Sarah K.',
         authorAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCqnH5D6CS5QgUEZjpR_9dzHLDd1OPK30LYBOUeswyshA8YnoKKvwQMHsjLBJGOxAXcx6zpeFDWmyhUW6MNCVbirlzwzWkVyI_ICL6DlkVoZOl29cL2gR6Sf54bxCN4e0sLji-jZXR4zYIQxIyZsGD99RbAOmF2tjVzY2dpH8GJcZnlD38URlDpbnT1MtBhi6WB7dBq4_2QUxcM6kKYH7MVrTnVaBKuLU6dCH1ZdKfU544D9Crrgy5eadkp11gMmR_PTC2JCZI7ZJVV',
         lookingForCount: 1
@@ -57,7 +90,7 @@ export const handlers = [
         projectType: 'Study Group',
         title: 'LeetCode Grind Squad',
         description: 'Meeting twice a week to tackle Hard problems. Preparing for FAANG interviews this upcoming cycle.',
-        requiredSkills: [{name: 'Algorithms', match: false}, {name: 'Data Structures', match: false}],
+        requiredSkills: [{ name: 'Algorithms', match: false }, { name: 'Data Structures', match: false }],
         authorName: 'James T.',
         authorAvatar: null,
         lookingForCount: 3
@@ -70,9 +103,33 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  http.post('/api/teams/:id/join', async ({ params }) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return HttpResponse.json({ success: true });
+  http.post('/api/auth/login', async ({ request }) => {
+    const body = await request.json();
+
+    const user = db.users.find(
+      user => user.email === body.email.toLowerCase()
+    );
+
+    if (!user) {
+      return HttpResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    if (user.password !== body.password) {
+      return HttpResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    await delay();
+
+    return HttpResponse.json({
+      user,
+      token: 'mock-jwt-token'
+    });
   }),
 
   // Mentorship & Opportunities
@@ -196,12 +253,12 @@ export const handlers = [
     const channelId = params.id;
     const body = await request.json();
     const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
-    
+
     const message = generateMessage(channelId, user.id, user.name, user.avatar);
     message.text = body.text;
     message.codeSnippet = body.codeSnippet || null;
     message.attachment = body.attachment || null;
-    
+
     db.messages.push(message);
     await delay();
     return HttpResponse.json({ message }, { status: 201 });
@@ -216,13 +273,13 @@ export const handlers = [
   http.post('/api/teams', async ({ request }) => {
     const body = await request.json();
     const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
-    
+
     const team = generateTeam(body.skillsNeeded, user.id, user.name, user.avatar);
     team.title = body.title;
     team.description = body.description;
     team.type = body.type;
     team.deadline = body.deadline;
-    
+
     db.teams.push(team);
     await delay();
     return HttpResponse.json({ team }, { status: 201 });
@@ -248,10 +305,10 @@ export const handlers = [
   http.post('/api/mentorship/questions', async ({ request }) => {
     const body = await request.json();
     const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
-    
+
     const question = generateQuestion(body.skillTags, user.id, user.name);
     question.question = body.question;
-    
+
     db.questions.push(question);
     await delay();
     return HttpResponse.json({ question }, { status: 201 });
@@ -261,12 +318,12 @@ export const handlers = [
     const questionId = params.id;
     const body = await request.json();
     const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
-    
+
     const question = db.questions.find(q => q.id === questionId);
     if (!question) {
       return HttpResponse.json({ error: 'Question not found' }, { status: 404 });
     }
-    
+
     const answer = {
       id: Math.random().toString(36).substring(7),
       text: body.text,
@@ -274,10 +331,10 @@ export const handlers = [
       answeredByName: user.name,
       isMentor: user.isMentor
     };
-    
+
     question.answers.push(answer);
     question.answerCount += 1;
-    
+
     await delay();
     return HttpResponse.json({ answer }, { status: 201 });
   })
