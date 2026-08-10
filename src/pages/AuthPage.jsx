@@ -8,13 +8,13 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  
+
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [isEmailTouched, setIsEmailTouched] = useState(false);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
+
   const navigate = useNavigate();
 
   // Validate email on change
@@ -29,12 +29,12 @@ export default function AuthPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsEmailTouched(true);
-    
+
     if (!isEmailValid) {
       setErrorMsg('Please use a valid @tkmce.ac.in college email.');
       return;
     }
-    
+
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters.');
       return;
@@ -55,11 +55,16 @@ export default function AuthPage() {
       } else {
         res = await api.login({ email, password });
       }
-      
+
       // Store token and redirect
       if (res.token) {
         localStorage.setItem('auth_token', res.token);
-        navigate('/onboarding');
+
+        if (mode === 'login') {
+          navigate('/dashboard');
+        } else {
+          navigate('/onboarding');
+        }
       }
     } catch (err) {
       setErrorMsg(err.message || 'An error occurred during authentication.');
@@ -71,12 +76,12 @@ export default function AuthPage() {
   return (
     <main className="w-full min-h-screen flex justify-center items-center relative overflow-hidden bg-surface-dim px-section-margin">
       {/* Abstract Background Pattern */}
-      <div 
-        className="absolute inset-0 opacity-10 pointer-events-none" 
+      <div
+        className="absolute inset-0 opacity-10 pointer-events-none"
         style={{ backgroundImage: 'radial-gradient(#424938 1px, transparent 1px)', backgroundSize: '24px 24px' }}
       ></div>
-      
-      <motion.div 
+
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
@@ -92,20 +97,20 @@ export default function AuthPage() {
 
         {/* Auth Toggle */}
         <div className="flex bg-surface-container-high rounded-lg p-1 relative shadow-sm">
-          <motion.div 
+          <motion.div
             className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-surface rounded-md shadow-sm"
             initial={false}
             animate={{ left: mode === 'signup' ? '4px' : 'calc(50%)' }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           ></motion.div>
-          <button 
+          <button
             type="button"
             className={`flex-1 py-2 font-mono-label z-10 transition-colors ${mode === 'signup' ? 'text-on-surface' : 'text-on-surface-variant'}`}
             onClick={() => { setMode('signup'); setErrorMsg(''); }}
           >
             Sign Up
           </button>
-          <button 
+          <button
             type="button"
             className={`flex-1 py-2 font-mono-label z-10 transition-colors ${mode === 'login' ? 'text-on-surface' : 'text-on-surface-variant'}`}
             onClick={() => { setMode('login'); setErrorMsg(''); }}
@@ -115,10 +120,10 @@ export default function AuthPage() {
         </div>
 
         <form className="flex flex-col gap-element-gap" onSubmit={handleSubmit}>
-          
+
           <AnimatePresence>
             {mode === 'signup' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -127,8 +132,8 @@ export default function AuthPage() {
                 <label className="font-mono-sm text-on-surface-variant uppercase">Full Name</label>
                 <div className="relative flex items-center">
                   <span className="absolute left-3 material-symbols-outlined text-outline-variant text-[20px]">person</span>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-surface text-on-surface font-body-md pl-10 pr-4 py-3 rounded-lg border border-transparent focus:border-primary-container focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant"
@@ -144,27 +149,25 @@ export default function AuthPage() {
             <label className="font-mono-sm text-on-surface-variant uppercase">College Email</label>
             <div className="relative flex items-center">
               <span className="absolute left-3 material-symbols-outlined text-outline-variant text-[20px]">shield</span>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setIsEmailTouched(true);
                 }}
-                className={`w-full bg-surface text-on-surface font-body-md pl-10 pr-10 py-3 rounded-lg border focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant ${
-                  isEmailTouched && !isEmailValid && email.length > 0 
-                    ? 'border-error focus:border-error' 
+                className={`w-full bg-surface text-on-surface font-body-md pl-10 pr-10 py-3 rounded-lg border focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant ${isEmailTouched && !isEmailValid && email.length > 0
+                    ? 'border-error focus:border-error'
                     : isEmailValid
                       ? 'border-primary-container/50 focus:border-primary-container'
                       : 'border-transparent focus:border-primary-container'
-                }`}
+                  }`}
                 placeholder="username@tkmce.ac.in"
                 required
               />
-              <span 
-                className={`absolute right-3 material-symbols-outlined text-primary-container text-[20px] transition-all duration-200 ${
-                  isEmailValid ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
-                }`}
+              <span
+                className={`absolute right-3 material-symbols-outlined text-primary-container text-[20px] transition-all duration-200 ${isEmailValid ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                  }`}
               >
                 check_circle
               </span>
@@ -183,8 +186,8 @@ export default function AuthPage() {
             </div>
             <div className="relative flex items-center">
               <span className="absolute left-3 material-symbols-outlined text-outline-variant text-[20px]">key</span>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-surface text-on-surface font-body-md pl-10 py-3 rounded-lg border border-transparent focus:border-primary-container focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant"
@@ -193,9 +196,9 @@ export default function AuthPage() {
               />
             </div>
           </div>
-          
+
           {errorMsg && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-error-container/20 text-error font-body-md p-3 rounded-lg text-sm"
@@ -204,7 +207,7 @@ export default function AuthPage() {
             </motion.div>
           )}
 
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="submit"
@@ -218,7 +221,7 @@ export default function AuthPage() {
             )}
           </motion.button>
         </form>
-        
+
         <div className="pt-4 border-t border-outline-variant/30 text-center">
           <p className="font-mono-sm text-on-surface-variant">
             By connecting, you accept the <a href="#" className="text-primary-container hover:underline">Campus Protocol</a>.
