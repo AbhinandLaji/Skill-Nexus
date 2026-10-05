@@ -20,7 +20,7 @@ It's a platform for students — built by students — to find collaborators, ge
 
 | What | Tools used |
 |---|---|
-| Frontend | HTML, CSS, JavaScript |
+| Frontend | HTML, React |
 | Backend | Node.js, Express 5 |
 | Database | MongoDB + Mongoose 9 |
 | Auth | JWT + bcryptjs |
