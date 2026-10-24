@@ -47,7 +47,11 @@ const userSchema = new mongoose.Schema(
             {
                 title: String,
                 description: String,
-                link: String
+                link: String,
+                role: { type: String, default: 'CONTRIBUTOR' },
+                status: { type: String, default: 'ACTIVE_BUILD' },
+                statusColor: { type: String, default: 'primary' },
+                image: { type: String, default: null }
             }
         ]
     },

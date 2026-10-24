@@ -10,7 +10,7 @@ export default function ReputationBoard({ user }) {
             <span className="material-symbols-outlined text-[20px] text-primary/70">forum</span>
             Queries Resolved
           </div>
-          <span className="font-mono-label text-mono-label text-primary">{user.stats?.queriesResolved || 342}</span>
+          <span className="font-mono-label text-mono-label text-primary">{user.stats?.queriesResolved ?? 0}</span>
         </div>
         
         <div className="flex flex-row justify-between items-center py-2 border-b border-white/[0.08]">
@@ -18,7 +18,7 @@ export default function ReputationBoard({ user }) {
             <span className="material-symbols-outlined text-[20px] text-secondary/70">group</span>
             Teams Advised
           </div>
-          <span className="font-mono-label text-mono-label text-secondary">{user.stats?.teamsAdvised || 14}</span>
+          <span className="font-mono-label text-mono-label text-secondary">{user.stats?.teamsAdvised ?? 0}</span>
         </div>
         
         <div className="flex flex-row justify-between items-center py-2">
@@ -26,7 +26,7 @@ export default function ReputationBoard({ user }) {
             <span className="material-symbols-outlined text-[20px] text-tertiary-fixed-dim/70">video_camera_front</span>
             Sessions Led
           </div>
-          <span className="font-mono-label text-mono-label text-tertiary-fixed-dim">{user.stats?.sessionsLed || 28}</span>
+          <span className="font-mono-label text-mono-label text-tertiary-fixed-dim">{user.stats?.sessionsLed ?? 0}</span>
         </div>
       </div>
     </div>

@@ -38,6 +38,27 @@ const teamSchema = new mongoose.Schema(
             type: Number,
             default: 2
         },
+        maxMembers: {
+            type: Number,
+            default: 4,
+            min: 2
+        },
+        members: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User'
+            }
+        ],
+        status: {
+            type: String,
+            enum: ['open', 'filled'],
+            default: 'open'
+        },
+        channelId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Channel',
+            default: null
+        },
         deadline: {
             type: String,
             default: null
@@ -46,7 +67,7 @@ const teamSchema = new mongoose.Schema(
             {
                 user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
                 requestedAt: { type: Date, default: Date.now },
-                status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' }
+                status: { type: String, enum: ['pending', 'accepted', 'rejected', 'declined'], default: 'pending' }
             }
         ]
     },

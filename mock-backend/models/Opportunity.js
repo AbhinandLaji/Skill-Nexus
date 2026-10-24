@@ -7,30 +7,58 @@ const opportunitySchema = new mongoose.Schema(
             required: true,
             trim: true
         },
+        organization: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        company: {
+            type: String,
+            default: function () {
+                return this.organization || '';
+            }
+        },
+        category: {
+            type: String,
+            enum: ['internship', 'hackathon', 'workshop', 'open_source'],
+            default: 'internship'
+        },
         type: {
             type: String,
-            enum: ['INTERNSHIP', 'HACKATHON', 'EVENT'],
-            default: 'INTERNSHIP'
+            default: function () {
+                return (this.category || 'internship').toUpperCase();
+            }
+        },
+        deadline: {
+            type: String,
+            default: '2 weeks left'
+        },
+        tags: [
+            {
+                type: String,
+                trim: true
+            }
+        ],
+        link: {
+            type: String,
+            default: ''
+        },
+        description: {
+            type: String,
+            default: ''
         },
         typeColor: {
             type: String,
             default: 'primary'
         },
-        company: {
-            type: String,
-            default: ''
-        },
-        deadline: {
-            type: String,
-            default: 'Ends in 3 days'
-        },
         icon: {
             type: String,
-            default: 'schedule'
+            default: 'work'
         },
-        description: {
-            type: String,
-            default: ''
+        postedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null
         },
         applicants: [
             {
@@ -44,7 +72,7 @@ const opportunitySchema = new mongoose.Schema(
         toJSON: {
             virtuals: true,
             transform: (doc, ret) => {
-                ret.id = ret._id.toString();
+                ret.id = doc._id ? doc._id.toString() : doc.id;
                 delete ret.__v;
                 return ret;
             }

@@ -6,6 +6,8 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [skillsStr, setSkillsStr] = useState('');
+  const [maxMembers, setMaxMembers] = useState(4);
+  const [projectType, setProjectType] = useState('Hackathon');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -17,13 +19,21 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess }) {
     const requiredSkills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
 
     try {
-      await api.createTeamPost({ title, description, requiredSkills });
+      await api.createTeamPost({
+        title,
+        description,
+        requiredSkills,
+        maxMembers: Number(maxMembers) || 4,
+        projectType
+      });
       onSuccess();
       onClose();
       // Reset form
       setTitle('');
       setDescription('');
       setSkillsStr('');
+      setMaxMembers(4);
+      setProjectType('Hackathon');
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || 'Failed to post listing');
@@ -98,6 +108,39 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess }) {
                     className="w-full bg-surface-container-low border border-white/[0.08] rounded-lg py-2 px-4 focus:outline-none focus:border-primary transition-colors text-on-surface"
                     placeholder="e.g. Python, AI/ML, FastAPI"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-mono-sm text-on-surface-variant block mb-2 uppercase">
+                      Maximum Members / Team Size
+                    </label>
+                    <input 
+                      type="number"
+                      required
+                      min="2"
+                      max="16"
+                      value={maxMembers}
+                      onChange={(e) => setMaxMembers(Math.max(2, parseInt(e.target.value) || 2))}
+                      className="w-full bg-surface-container-low border border-white/[0.08] rounded-lg py-2 px-4 focus:outline-none focus:border-primary transition-colors text-on-surface"
+                      placeholder="e.g. 4"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-mono-sm text-on-surface-variant block mb-2 uppercase">
+                      Project Type
+                    </label>
+                    <select
+                      value={projectType}
+                      onChange={(e) => setProjectType(e.target.value)}
+                      className="w-full bg-surface-container-low border border-white/[0.08] rounded-lg py-2 px-4 focus:outline-none focus:border-primary transition-colors text-on-surface"
+                    >
+                      <option value="Hackathon">Hackathon</option>
+                      <option value="Long-term">Long-term Project</option>
+                      <option value="Study Group">Study Group</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-4">

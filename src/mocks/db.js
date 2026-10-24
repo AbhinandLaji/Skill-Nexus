@@ -7,7 +7,8 @@ export const db = {
   messages: [],
   teams: [],
   opportunities: [],
-  questions: []
+  questions: [],
+  notifications: []
 };
 
 export const generateSkill = (name, colorAccent) => ({
@@ -153,6 +154,49 @@ export const seed = () => {
     }
     db.questions.push(q);
   }
+
+  // Seed Notifications
+  db.notifications.push(
+    {
+      id: faker.string.uuid(),
+      senderName: 'Dev Patel',
+      senderAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+      type: 'team_join_request',
+      title: 'Team Join Request',
+      message: 'requested to join your team "AI Agent Swarm Platform"',
+      targetType: 'team',
+      targetId: '1',
+      targetTitle: 'AI Agent Swarm Platform',
+      status: 'pending',
+      createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString()
+    },
+    {
+      id: faker.string.uuid(),
+      senderName: 'Sarah Jenkins',
+      senderAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
+      type: 'channel_invite',
+      title: 'Channel Invite',
+      message: 'invited you to join the private channel #python-core-collab',
+      targetType: 'channel',
+      targetId: 'chan-python',
+      targetTitle: '#python-core-collab',
+      status: 'pending',
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString()
+    },
+    {
+      id: faker.string.uuid(),
+      senderName: 'Arjun Nair',
+      senderAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
+      type: 'team_join_request',
+      title: 'Team Join Request',
+      message: 'requested to join your team "Zero-Knowledge Voting App"',
+      targetType: 'team',
+      targetId: '2',
+      targetTitle: 'Zero-Knowledge Voting App',
+      status: 'pending',
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
+    }
+  );
 };
 
 seed();

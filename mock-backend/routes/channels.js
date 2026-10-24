@@ -37,43 +37,23 @@ const DEFAULT_MESSAGES = [
 // GET /api/channels - List all channels
 router.get('/', async (req, res) => {
     try {
-        let channels = await Channel.find();
+        const channels = await Channel.find();
 
-        if (!channels || channels.length === 0) {
-            // Find existing skills to bind skillIds
-            const skills = await Skill.find();
-            const channelsToInsert = DEFAULT_CHANNELS.map((ch, idx) => {
-                const matchedSkill = skills.find(s => s.name === ch.skillName);
-                return {
-                    name: ch.name,
-                    skillId: matchedSkill ? matchedSkill._id.toString() : (idx + 1).toString(),
-                    memberCount: ch.memberCount,
-                    unreadCount: ch.unreadCount
-                };
-            });
-            channels = await Channel.insertMany(channelsToInsert);
-        }
-
-        const formatted = channels.map(c => ({
+        const formatted = (channels || []).map(c => ({
             id: c._id.toString(),
             _id: c._id.toString(),
             name: c.name,
             skillId: c.skillId,
-            memberCount: c.memberCount,
-            unreadCount: c.unreadCount
+            memberCount: c.members && c.members.length > 0 ? c.members.length : (c.memberCount || 1),
+            unreadCount: c.unreadCount || 0,
+            members: (c.members || []).map(m => m.toString()),
+            teamId: c.teamId ? c.teamId.toString() : null,
+            isPrivate: c.isPrivate || false
         }));
 
         return res.json(formatted);
     } catch (error) {
-        return res.json(
-            DEFAULT_CHANNELS.map((ch, idx) => ({
-                id: (idx + 1).toString(),
-                name: ch.name,
-                skillId: (idx + 1).toString(),
-                memberCount: ch.memberCount,
-                unreadCount: ch.unreadCount
-            }))
-        );
+        return res.json([]);
     }
 });
 
@@ -139,6 +119,42 @@ router.post('/:id/messages', protect, async (req, res) => {
             attachment: attachment || null,
             threadCount: 0
         });
+
+        // Trigger notifications for any @mentioned users
+        try {
+            const User = require('../models/User');
+            const Notification = require('../models/Notification');
+            const mentionMatches = messageText.match(/@([a-zA-Z0-9_]+)/g);
+            if (mentionMatches && mentionMatches.length > 0) {
+                for (const rawMention of mentionMatches) {
+                    const mentionName = rawMention.substring(1);
+                    const mentionedUser = await User.findOne({
+                        $or: [
+                            { name: new RegExp(`^${mentionName}`, 'i') },
+                            { email: new RegExp(`^${mentionName}@`, 'i') }
+                        ]
+                    });
+                    if (mentionedUser && mentionedUser._id.toString() !== req.user._id.toString()) {
+                        await Notification.create({
+                            recipient: mentionedUser._id,
+                            sender: req.user._id,
+                            senderName: req.user.name || 'Student',
+                            senderAvatar: req.user.avatar || null,
+                            type: 'mention',
+                            title: 'New Mention',
+                            message: `${req.user.name || 'Someone'} mentioned you: "${messageText.slice(0, 60)}"`,
+                            link: `/dashboard/channels/${id}`,
+                            targetType: 'channel',
+                            targetId: id,
+                            status: 'read',
+                            read: false
+                        });
+                    }
+                }
+            }
+        } catch (notifErr) {
+            // non-fatal
+        }
 
         const formatted = {
             id: message._id.toString(),

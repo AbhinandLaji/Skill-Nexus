@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 
-export default function TeamCard({ team }) {
+export default function TeamCard({ team, currentUser, onDelete }) {
   const [requestStatus, setRequestStatus] = useState('idle'); // 'idle' | 'loading' | 'requested' | 'error'
 
+  const currentUserId = currentUser?.id || currentUser?._id;
+  const isOwner = Boolean(
+    currentUser && (
+      (team.authorId && currentUserId && String(team.authorId) === String(currentUserId)) ||
+      (team.authorName && currentUser.name && team.authorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+    )
+  );
+
+  const isMember = Boolean(
+    isOwner ||
+    (currentUser && currentUserId && team.members && team.members.some(m => String(m) === String(currentUserId)))
+  );
+
+  const isFilled = team.status === 'filled' || (team.memberCount >= (team.maxMembers || 4));
+
   const handleRequest = async () => {
+    if (isOwner || isMember || isFilled) return;
     setRequestStatus('loading');
     try {
-      await api.requestToJoinTeam(team.id);
+      await api.requestToJoinTeam(team.id || team._id);
       setRequestStatus('requested');
     } catch (err) {
       console.error("Failed to request to join team", err);
@@ -40,9 +57,19 @@ export default function TeamCard({ team }) {
             </span>
             {team.projectType}
           </span>
-          <button className="text-on-surface-variant hover:text-on-surface transition-colors">
-            <span className="material-symbols-outlined text-[20px]">more_horiz</span>
-          </button>
+          {isOwner && onDelete ? (
+            <button 
+              onClick={() => onDelete(team.id || team._id)}
+              className="text-on-surface-variant hover:text-error transition-colors p-1 rounded hover:bg-error/10"
+              title="Delete Listing"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+          ) : (
+            <button className="text-on-surface-variant hover:text-on-surface transition-colors">
+              <span className="material-symbols-outlined text-[20px]">more_horiz</span>
+            </button>
+          )}
         </div>
         
         <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-2 line-clamp-1">{team.title}</h2>
@@ -75,30 +102,66 @@ export default function TeamCard({ team }) {
           )}
           <div>
             <p className="font-mono-label text-mono-label text-on-surface">{team.authorName}</p>
-            <p className="font-mono-sm text-mono-sm text-on-surface-variant">Looking for {team.lookingForCount}</p>
+            <p className="font-mono-sm text-mono-sm text-on-surface-variant flex items-center gap-1.5">
+              <span>{team.memberCount || 1}/{team.maxMembers || 4} members</span>
+              {isFilled && (
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-error-container/20 text-error">
+                  Full
+                </span>
+              )}
+            </p>
           </div>
         </div>
         
-        <button 
-          onClick={handleRequest}
-          disabled={requestStatus !== 'idle'}
-          className={`px-4 py-2 font-button-text text-button-text rounded-md transition-all flex items-center gap-2 ${
-            requestStatus === 'requested' 
-              ? 'bg-surface-variant text-on-background/50 border border-transparent cursor-not-allowed'
-              : 'border border-primary-fixed-dim text-primary-fixed-dim hover:bg-primary-fixed-dim/10'
-          }`}
-        >
-          {requestStatus === 'loading' ? (
-            <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
-          ) : requestStatus === 'requested' ? (
-            <>
-              <span className="material-symbols-outlined text-[16px]">check</span>
-              Requested
-            </>
-          ) : (
-            'Join Team'
+        <div className="flex items-center gap-2">
+          {team.channelId && (isOwner || isMember) && (
+            <Link
+              to={`/dashboard/channels/${team.channelId}`}
+              className="px-3 py-1.5 font-button-text text-xs rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Open Community Channel"
+            >
+              <span className="material-symbols-outlined text-[15px]">forum</span>
+              Channel
+            </Link>
           )}
-        </button>
+
+          {isOwner ? (
+            <span className="px-2.5 py-1.5 font-mono-sm text-xs rounded-md bg-primary-fixed-dim/15 border border-primary-fixed-dim/30 text-primary-fixed-dim flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px]">person</span>
+              Yours
+            </span>
+          ) : isMember ? (
+            <span className="px-2.5 py-1.5 font-mono-sm text-xs rounded-md bg-secondary-container/20 border border-secondary-container/30 text-secondary flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px]">check</span>
+              Joined
+            </span>
+          ) : isFilled ? (
+            <span className="px-3 py-1.5 font-mono-sm text-xs rounded-md bg-surface-variant text-on-surface-variant/60 border border-white/5 cursor-not-allowed">
+              Filled
+            </span>
+          ) : (
+            <button 
+              onClick={handleRequest}
+              disabled={requestStatus !== 'idle'}
+              className={`px-3 py-1.5 font-button-text text-xs rounded-md transition-all flex items-center gap-1.5 ${
+                requestStatus === 'requested' 
+                  ? 'bg-surface-variant text-on-background/50 border border-transparent cursor-not-allowed'
+                  : 'border border-primary-fixed-dim text-primary-fixed-dim hover:bg-primary-fixed-dim/10'
+              }`}
+            >
+              {requestStatus === 'loading' ? (
+                <span className="material-symbols-outlined text-[14px] animate-spin">refresh</span>
+              ) : requestStatus === 'requested' ? (
+                <>
+                  <span className="material-symbols-outlined text-[14px]">check</span>
+                  Requested
+                </>
+              ) : (
+                'Join Team'
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOutletContext, useParams } from 'react-router-dom';
+import { useOutletContext, useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import ProfileHeader from '../components/ProfileHeader';
 import ReputationBoard from '../components/ReputationBoard';
@@ -8,11 +8,47 @@ import PortfolioGrid from '../components/PortfolioGrid';
 import EditProfileModal from '../components/EditProfileModal';
 
 export default function UserProfile() {
-  const { user: currentUser } = useOutletContext();
+  const { user: currentUser, skills: allSkills = [] } = useOutletContext();
   const { userId } = useParams();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    navigate('/auth');
+  };
   
-  const [profileData, setProfileData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [mockUserProfile, setMockUserProfile] = useState({
+    name: currentUser?.name || 'Alex Chen',
+    email: currentUser?.email || 'alex.c@tkmce.ac.in',
+    avatar: currentUser?.avatar || null,
+    batch: currentUser?.batch || null,
+    isMentor: true,
+    skills: ["Python", "MERN Stack", "AWS", "UI/UX"],
+    stats: {
+      queriesResolved: 342,
+      teamsAdvised: 14,
+      sessionsLed: 28
+    },
+    bio: 'Building scalable ML pipelines and mentoring junior devs in systems architecture. Currently obsessed with Rust optimization and edge computing. Always down to debug weird memory leaks over coffee.',
+    projects: [
+      {
+        id: '1',
+        title: 'Nexus AI Swarm Platform',
+        description: 'Multi-agent system for automated code verification and syntax testing.',
+        role: 'Lead Architect',
+        status: 'Active'
+      },
+      {
+        id: '2',
+        title: 'ZK Campus Voting Protocol',
+        description: 'Decentralized cryptographic voting engine deployed for collegiate council elections.',
+        role: 'Core Contributor',
+        status: 'Completed'
+      }
+    ]
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -21,36 +57,74 @@ export default function UserProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setIsLoading(true);
       try {
-        const data = await api.getUserProfile(targetUserId);
-        
-        // Let's ensure the data matches the expected shape from the mockup if missing
-        const enrichedData = {
-          ...data,
-          bio: data.bio || 'Building scalable ML pipelines and mentoring junior devs in systems architecture. Currently obsessed with Rust optimization and edge computing. Always down to debug weird memory leaks over coffee.',
-          skills: data.skills || ['Python', 'AI/ML', 'Distributed Systems', 'Rust'],
-          isMentor: data.isMentor !== undefined ? data.isMentor : true,
-          stats: data.stats || {
-            queriesResolved: 342,
-            teamsAdvised: 14,
-            sessionsLed: 28
-          },
-          projects: data.projects || []
-        };
-        
-        setProfileData(enrichedData);
+        let skillsPool = allSkills;
+        if (!skillsPool || skillsPool.length === 0) {
+          skillsPool = await api.getSkills().catch(() => []);
+        }
+        const [data, userTeams] = await Promise.all([
+          api.getUserProfile(targetUserId).catch(() => null),
+          api.getTeams().catch(() => [])
+        ]);
+
+        if (data) {
+          // Resolve raw ObjectIDs to human-readable names if present
+          const resolvedSkills = Array.isArray(data.skills) && data.skills.length > 0
+            ? data.skills.map(s => {
+                if (typeof s === 'string') {
+                  const matched = skillsPool.find(sk => sk.id === s || sk._id === s);
+                  if (matched) return matched.name;
+                  if (s.match(/^[0-9a-fA-F]{24}$/) || s.match(/^[0-9a-fA-F-]{36}$/)) {
+                    return null;
+                  }
+                  return s;
+                }
+                return s?.name || null;
+              }).filter(Boolean)
+            : [];
+
+          const currentUid = data._id || data.id;
+          const activeSquadProjects = (userTeams || [])
+            .filter(t => {
+              if (t.authorId && currentUid && String(t.authorId) === String(currentUid)) return true;
+              if (t.members && currentUid && t.members.some(m => String(m) === String(currentUid))) return true;
+              return false;
+            })
+            .map(t => ({
+              id: t.id || t._id,
+              title: t.title,
+              description: t.description,
+              role: (t.authorId && String(t.authorId) === String(currentUid)) ? 'Squad Lead' : 'Member',
+              status: t.status === 'filled' ? 'FULL' : 'RECRUITING',
+              channelId: t.channelId,
+              statusColor: t.status === 'filled' ? 'secondary' : 'primary'
+            }));
+
+          setMockUserProfile(prev => ({
+            ...prev,
+            ...data,
+            batch: data.batch || prev.batch,
+            skills: resolvedSkills.length > 0 ? resolvedSkills : prev.skills,
+            projects: activeSquadProjects.length > 0 ? activeSquadProjects : (data.projects && data.projects.length > 0 ? data.projects : prev.projects),
+            stats: {
+              queriesResolved: data.stats?.queriesResolved ?? prev.stats.queriesResolved,
+              teamsAdvised: data.stats?.teamsAdvised ?? prev.stats.teamsAdvised,
+              sessionsLed: data.stats?.sessionsLed ?? prev.stats.sessionsLed
+            },
+            bio: data.bio || prev.bio
+          }));
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Using mockUserProfile defaults:", err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchProfile();
-  }, [targetUserId]);
+  }, [targetUserId, allSkills]);
 
   const handleProfileUpdate = (updatedData) => {
-    setProfileData(updatedData);
+    setMockUserProfile(prev => ({ ...prev, ...updatedData }));
     setToastMessage('Profile updated successfully!');
     setTimeout(() => setToastMessage(''), 3000);
   };
@@ -65,10 +139,6 @@ export default function UserProfile() {
         </div>
       </div>
     );
-  }
-
-  if (!profileData) {
-    return <div className="p-12 text-center text-on-surface-variant">Profile not found.</div>;
   }
 
   return (
@@ -92,43 +162,33 @@ export default function UserProfile() {
       </AnimatePresence>
 
       <ProfileHeader 
-        user={profileData} 
+        user={mockUserProfile} 
         onEditClick={() => setIsEditModalOpen(true)} 
+        onLogout={handleLogout}
       />
 
       <div className="grid grid-cols-12 gap-[24px]">
         {/* Left Column (Stats & About) */}
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-[24px]">
-          <ReputationBoard user={profileData} />
+          <ReputationBoard user={mockUserProfile} />
           
           {/* About Card */}
           <div className="bg-surface-container rounded-xl p-[24px] border border-white/[0.08] hover:-translate-y-0.5 hover:border-white/20 transition-all duration-200">
             <h3 className="font-mono-sm text-mono-sm text-on-tertiary-container uppercase tracking-widest mb-[16px]">Terminal Log</h3>
             <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-              {profileData.bio}
+              {mockUserProfile.bio}
             </p>
-          </div>
-          
-          {/* Visual Element */}
-          <div className="w-full h-48 rounded-xl bg-surface-container border border-white/[0.08] relative overflow-hidden flex items-center justify-center group cursor-pointer hover:border-primary/50 transition-colors hidden md:flex">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background"></div>
-            <svg className="w-32 h-32 text-primary opacity-50 group-hover:opacity-80 transition-opacity" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 100 100">
-              <path className="animate-[spin_20s_linear_infinite]" d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z" strokeDasharray="4 4" style={{ animation: 'spin 20s linear infinite' }}></path>
-              <circle cx="50" cy="50" r="25"></circle>
-              <circle cx="50" cy="50" fill="currentColor" r="4"></circle>
-            </svg>
-            <div className="absolute bottom-4 left-4 font-mono-sm text-mono-sm text-primary/60">SYS_ACTIVITY_INDEX // HIGH</div>
           </div>
         </div>
 
         {/* Right Column (Active Teams) */}
-        <PortfolioGrid projects={profileData.projects} />
+        <PortfolioGrid projects={mockUserProfile.projects} />
       </div>
 
       <EditProfileModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
-        user={profileData}
+        user={mockUserProfile}
         onSuccess={handleProfileUpdate}
       />
     </motion.div>

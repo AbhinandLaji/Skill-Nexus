@@ -9,7 +9,22 @@ const channelSchema = new mongoose.Schema(
         },
         skillId: {
             type: String,
-            required: true
+            default: 'squad'
+        },
+        members: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User'
+            }
+        ],
+        teamId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Team',
+            default: null
+        },
+        isPrivate: {
+            type: Boolean,
+            default: false
         },
         memberCount: {
             type: Number,

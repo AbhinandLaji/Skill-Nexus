@@ -7,7 +7,10 @@ export default function AuthPage() {
   const [mode, setMode] = useState('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [isEmailTouched, setIsEmailTouched] = useState(false);
@@ -40,9 +43,16 @@ export default function AuthPage() {
       return;
     }
 
-    if (mode === 'signup' && !name.trim()) {
-      setErrorMsg('Name is required for registration.');
-      return;
+    if (mode === 'signup') {
+      if (!name.trim()) {
+        setErrorMsg('Name is required for registration.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setErrorMsg('Passwords do not match. Please re-enter.');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -106,14 +116,14 @@ export default function AuthPage() {
           <button
             type="button"
             className={`flex-1 py-2 font-mono-label z-10 transition-colors ${mode === 'signup' ? 'text-on-surface' : 'text-on-surface-variant'}`}
-            onClick={() => { setMode('signup'); setErrorMsg(''); }}
+            onClick={() => { setMode('signup'); setErrorMsg(''); setConfirmPassword(''); }}
           >
             Sign Up
           </button>
           <button
             type="button"
             className={`flex-1 py-2 font-mono-label z-10 transition-colors ${mode === 'login' ? 'text-on-surface' : 'text-on-surface-variant'}`}
-            onClick={() => { setMode('login'); setErrorMsg(''); }}
+            onClick={() => { setMode('login'); setErrorMsg(''); setConfirmPassword(''); }}
           >
             Log In
           </button>
@@ -187,15 +197,61 @@ export default function AuthPage() {
             <div className="relative flex items-center">
               <span className="absolute left-3 material-symbols-outlined text-outline-variant text-[20px]">key</span>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-surface text-on-surface font-body-md pl-10 py-3 rounded-lg border border-transparent focus:border-primary-container focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant"
+                className="w-full bg-surface text-on-surface font-body-md pl-10 pr-11 py-3 rounded-lg border border-transparent focus:border-primary-container focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant"
                 placeholder="••••••••"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 text-outline-variant hover:text-on-surface transition-colors p-1 flex items-center justify-center focus:outline-none"
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
             </div>
           </div>
+
+          <AnimatePresence>
+            {mode === 'signup' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-col gap-2 relative"
+              >
+                <label className="font-mono-sm text-on-surface-variant uppercase">Confirm Password</label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 material-symbols-outlined text-outline-variant text-[20px]">lock_reset</span>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-surface text-on-surface font-body-md pl-10 pr-11 py-3 rounded-lg border border-transparent focus:border-primary-container focus:outline-none transition-colors shadow-inner placeholder:text-outline-variant"
+                    placeholder="••••••••"
+                    required={mode === 'signup'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                    className="absolute right-3 text-outline-variant hover:text-on-surface transition-colors p-1 flex items-center justify-center focus:outline-none"
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {errorMsg && (
             <motion.div

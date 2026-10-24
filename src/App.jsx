@@ -20,6 +20,8 @@ function App() {
           <Route index element={<DashboardHome />} />
           <Route path="matchmaking" element={<TeamMatchmaking />} />
           <Route path="mentorship" element={<MentorshipHub />} />
+          <Route path="growth" element={<MentorshipHub />} />
+          <Route path="growth-hub" element={<MentorshipHub />} />
           <Route path="channels/:channelId" element={<ChannelView />} />
           <Route path="profile" element={<UserProfile />} />
         </Route>

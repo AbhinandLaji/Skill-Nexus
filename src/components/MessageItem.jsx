@@ -35,20 +35,30 @@ export default function MessageItem({ message }) {
           <CodeSnippetBlock language={message.payload.language} code={message.payload.code} />
         )}
         
-        {message.type === 'file' && message.payload && (
-          <div className="flex items-center gap-4 p-3 bg-surface-container rounded-lg border border-white/[0.04] max-w-sm hover:bg-surface-variant transition-colors cursor-pointer group/file mt-2">
-            <div className="w-10 h-10 rounded bg-secondary-container/20 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-secondary-container">
-                {message.payload.fileType === 'CSV' ? 'csv' : 'description'}
-              </span>
+        {(() => {
+          const fileData = message.attachment || message.payload;
+          if (!fileData || (!fileData.fileName && !fileData.filename)) return null;
+          const fileName = fileData.fileName || fileData.filename;
+          const fileSize = fileData.fileSize || fileData.size || '';
+          const fileType = fileData.fileType || fileName.split('.').pop()?.toUpperCase() || 'FILE';
+
+          return (
+            <div className="flex items-center gap-4 p-3 bg-surface-container rounded-lg border border-white/[0.04] max-w-sm hover:bg-surface-variant transition-colors cursor-pointer group/file mt-2">
+              <div className="w-10 h-10 rounded bg-secondary-container/20 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-secondary-container">
+                  {fileType === 'CSV' ? 'csv' : 'description'}
+                </span>
+              </div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="font-mono-label text-mono-label text-on-surface truncate">{fileName}</span>
+                <span className="font-mono-sm text-[11px] text-on-surface-variant">
+                  {fileSize ? `${fileSize} • ` : ''}{fileType}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant group-hover/file:text-on-surface">download</span>
             </div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <span className="font-mono-label text-mono-label text-on-surface truncate">{message.payload.fileName}</span>
-              <span className="font-mono-sm text-[11px] text-on-surface-variant">{message.payload.fileSize} • {message.payload.fileType}</span>
-            </div>
-            <span className="material-symbols-outlined text-on-surface-variant group-hover/file:text-on-surface">download</span>
-          </div>
-        )}
+          );
+        })()}
 
         {message.threadCount > 0 && (
           <div className="mt-3 flex items-center gap-3">

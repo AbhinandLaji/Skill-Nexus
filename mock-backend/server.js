@@ -1,3 +1,10 @@
+const dns = require('dns');
+try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {
+    // Ignore if not supported
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -11,6 +18,7 @@ const opportunitiesRoutes = require('./routes/opportunities');
 const mentorsRoutes = require('./routes/mentors');
 const mentorshipRoutes = require('./routes/mentorship');
 const channelsRoutes = require('./routes/channels');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -27,10 +35,15 @@ app.use('/api/opportunities', opportunitiesRoutes);
 app.use('/api/mentors', mentorsRoutes);
 app.use('/api/mentorship', mentorshipRoutes);
 app.use('/api/channels', channelsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ 
+        status: 'ok', 
+        database: mongoose.connection ? mongoose.connection.name : 'unknown',
+        timestamp: new Date().toISOString() 
+    });
 });
 
 app.get('/', (req, res) => {
@@ -47,13 +60,13 @@ app.use((err, req, res, next) => {
 });
 
 // Database Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/skillnexus';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/test';
 
 mongoose.set('bufferCommands', false);
 
 mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 })
-    .then(() => {
-        console.log('MongoDB connected successfully');
+    .then((conn) => {
+        console.log(`MongoDB connected successfully to database: "${conn.connection.name}"`);
     })
     .catch((error) => {
         console.error('MongoDB connection failed:', error.message);

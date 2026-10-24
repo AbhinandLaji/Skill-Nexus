@@ -82,9 +82,6 @@ export default function LandingPage() {
                   <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </motion.button>
               </Link>
-              <button className="bg-transparent border border-outline font-button-text text-on-surface px-8 py-4 rounded-lg hover:bg-surface-container hover:border-outline-variant transition-colors duration-150 flex items-center justify-center gap-2">
-                View public projects
-              </button>
             </div>
           </motion.div>
         </section>

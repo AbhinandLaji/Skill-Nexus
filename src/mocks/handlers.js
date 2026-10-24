@@ -285,9 +285,51 @@ export const handlers = [
     return HttpResponse.json({ team }, { status: 201 });
   }),
 
-  http.post('/api/teams/:id/join-request', async () => {
+  http.post('/api/teams/:id/join', async ({ params }) => {
+    const teamId = params.id;
+    const team = db.teams.find(t => t.id === teamId || t._id === teamId);
+    const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
+    
+    // Add to notifications
+    db.notifications.unshift({
+      id: crypto.randomUUID(),
+      senderName: user ? user.name : 'You',
+      senderAvatar: user ? user.avatar : null,
+      type: 'team_join_request',
+      title: 'Team Join Request',
+      message: `requested to join team "${team ? team.title : 'Project Team'}"`,
+      targetType: 'team',
+      targetId: teamId,
+      targetTitle: team ? team.title : 'Project Team',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
     await delay();
-    return HttpResponse.json({ status: "requested" });
+    return HttpResponse.json({ success: true, status: "requested" });
+  }),
+
+  http.post('/api/teams/:id/join-request', async ({ params }) => {
+    const teamId = params.id;
+    const team = db.teams.find(t => t.id === teamId || t._id === teamId);
+    const user = db.users.find(u => u.email === 'test@tkmce.ac.in') || db.users[0];
+
+    db.notifications.unshift({
+      id: crypto.randomUUID(),
+      senderName: user ? user.name : 'You',
+      senderAvatar: user ? user.avatar : null,
+      type: 'team_join_request',
+      title: 'Team Join Request',
+      message: `requested to join team "${team ? team.title : 'Project Team'}"`,
+      targetType: 'team',
+      targetId: teamId,
+      targetTitle: team ? team.title : 'Project Team',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+
+    await delay();
+    return HttpResponse.json({ success: true, status: "requested" });
   }),
 
   // Opportunities
@@ -337,5 +379,38 @@ export const handlers = [
 
     await delay();
     return HttpResponse.json({ answer }, { status: 201 });
+  }),
+
+  // Notifications
+  http.get('/api/notifications', async () => {
+    await delay(300);
+    return HttpResponse.json(db.notifications);
+  }),
+
+  http.post('/api/notifications/:id/respond', async ({ params, request }) => {
+    const notifId = params.id;
+    const body = await request.json();
+    const action = body.action; // 'accept' | 'decline'
+
+    const notif = db.notifications.find(n => n.id === notifId);
+    if (notif) {
+      notif.status = action === 'accept' ? 'accepted' : 'declined';
+    }
+
+    await delay(400);
+    return HttpResponse.json({
+      success: true,
+      notification: notif || { id: notifId, status: action === 'accept' ? 'accepted' : 'declined' }
+    });
+  }),
+
+  http.post('/api/notifications/mark-all-read', async () => {
+    db.notifications.forEach(n => {
+      if (n.status === 'pending') {
+        n.status = 'read';
+      }
+    });
+    await delay(200);
+    return HttpResponse.json({ success: true });
   })
 ];

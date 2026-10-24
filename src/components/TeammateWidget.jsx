@@ -20,32 +20,40 @@ export default function TeammateWidget({ matches }) {
       </p>
       
       <div className="flex flex-col gap-3">
-        {matches.map((match, i) => (
-          <div key={i} className="flex items-center justify-between p-2 rounded-sm hover:bg-surface-variant/50 transition-colors cursor-pointer border border-transparent hover:border-white/[0.04]">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                {match.avatar ? (
-                  <img src={match.avatar} alt={match.name} className="w-8 h-8 rounded-sm object-cover border border-white/[0.1]" />
-                ) : (
-                  <div className="w-8 h-8 rounded-sm bg-surface-container-highest border border-white/[0.1] flex items-center justify-center">
-                    <span className="font-mono-sm text-on-surface-variant">{match.name.charAt(0)}</span>
-                  </div>
-                )}
-                <div 
-                  className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-background"
-                  style={{ backgroundColor: match.colorAccent || '#B4F461' }}
-                ></div>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-button-text text-on-surface text-sm">{match.name}</span>
-                <span className="font-mono-sm text-on-surface-variant/60 text-[10px]">Need: {match.needs}</span>
-              </div>
-            </div>
-            <button className="w-6 h-6 rounded-sm bg-surface-container-high hover:bg-primary hover:text-background flex items-center justify-center transition-colors border border-white/[0.08]">
-              <span className="material-symbols-outlined text-[14px]">add</span>
-            </button>
+        {(!matches || matches.length === 0) ? (
+          <div className="p-4 rounded-lg bg-surface-container-high/40 border border-white/[0.04] text-center flex flex-col items-center gap-2">
+            <span className="material-symbols-outlined text-on-surface-variant/60 text-xl">radar</span>
+            <p className="font-mono-sm text-xs text-on-surface-variant/80">No active collaborators on radar</p>
+            <span className="font-mono-sm text-[11px] text-on-surface-variant/50">Post a squad listing to connect with peers.</span>
           </div>
-        ))}
+        ) : (
+          matches.map((match, i) => (
+            <div key={i} className="flex items-center justify-between p-2 rounded-sm hover:bg-surface-variant/50 transition-colors cursor-pointer border border-transparent hover:border-white/[0.04]">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  {match.avatar ? (
+                    <img src={match.avatar} alt={match.name} className="w-8 h-8 rounded-sm object-cover border border-white/[0.1]" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-sm bg-surface-container-highest border border-white/[0.1] flex items-center justify-center">
+                      <span className="font-mono-sm text-on-surface-variant">{match.name.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div 
+                    className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-background"
+                    style={{ backgroundColor: match.colorAccent || '#B4F461' }}
+                  ></div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-button-text text-on-surface text-sm">{match.name}</span>
+                  <span className="font-mono-sm text-on-surface-variant/60 text-[10px]">Need: {match.needs}</span>
+                </div>
+              </div>
+              <button className="w-6 h-6 rounded-sm bg-surface-container-high hover:bg-primary hover:text-background flex items-center justify-center transition-colors border border-white/[0.08]">
+                <span className="material-symbols-outlined text-[14px]">add</span>
+              </button>
+            </div>
+          ))
+        )}
       </div>
       
       <button className="w-full mt-4 py-2 border border-outline-variant/50 rounded-sm font-mono-sm text-on-surface-variant hover:text-primary hover:border-primary/50 transition-all text-center">
