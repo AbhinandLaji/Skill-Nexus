@@ -56,21 +56,31 @@ export default function MessageInput({ channelId, onMessageSent }) {
           code: codeContent.trim(),
           content: codeContent.trim()
         };
-      } else if (hasFile) {
+      }
+      let attachmentPayload = null;
+      if (hasFile) {
         messageType = 'file';
-        const ext = selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE';
-        payload = {
-          fileName: selectedFile.name,
-          fileSize: formatFileSize(selectedFile.size),
-          fileType: ext
-        };
+        try {
+          // Upload the real file to Express via Multer
+          const uploadRes = await api.uploadAttachment(selectedFile);
+          attachmentPayload = {
+            fileUrl: uploadRes.fileUrl,
+            fileName: uploadRes.fileName,
+            fileSize: uploadRes.fileSize,
+            fileType: uploadRes.fileType
+          };
+        } catch (uploadErr) {
+          console.error('File upload failed, falling back to metadata:', uploadErr);
+          attachmentPayload = {
+            fileUrl: null,
+            fileName: selectedFile.name,
+            fileSize: formatFileSize(selectedFile.size),
+            fileType: selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE'
+          };
+        }
+        payload = attachmentPayload;
       }
 
-      const attachmentPayload = hasFile ? {
-        fileName: selectedFile.name,
-        fileSize: formatFileSize(selectedFile.size),
-        fileType: selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE'
-      } : null;
 
       const newMsg = {
         id: Date.now().toString(),
@@ -143,14 +153,14 @@ export default function MessageInput({ channelId, onMessageSent }) {
   return (
     <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent z-20">
       <div className="bg-surface-container-low border border-white/[0.08] rounded-xl flex flex-col focus-within:border-primary-fixed/50 transition-colors shadow-2xl overflow-hidden">
-        
+
         {/* Hidden File Input */}
-        <input 
-          type="file" 
-          id="file-upload" 
+        <input
+          type="file"
+          id="file-upload"
           ref={fileInputRef}
           onChange={handleFileSelect}
-          className="hidden" 
+          className="hidden"
         />
 
         {/* Pending File Attachment Preview */}
@@ -227,14 +237,14 @@ export default function MessageInput({ channelId, onMessageSent }) {
 
         {/* Main Text Input */}
         <div className="p-3 pb-0">
-          <textarea 
+          <textarea
             ref={textareaRef}
             value={content}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             disabled={isSending}
             className="w-full bg-transparent border-none resize-none font-body-md text-body-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:ring-0 min-h-[44px] max-h-32 custom-scrollbar"
-            placeholder={isCodeMode ? "Add an optional description for this snippet..." : "Message #python-help..."} 
+            placeholder={isCodeMode ? "Add an optional description for this snippet..." : "Message #python-help..."}
             rows="1"
           />
         </div>
@@ -243,28 +253,26 @@ export default function MessageInput({ channelId, onMessageSent }) {
         <div className="flex items-center justify-between p-2 pl-3">
           <div className="flex items-center gap-1">
             {/* File Upload ('+') Button */}
-            <button 
+            <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`w-8 h-8 rounded flex items-center justify-center transition-colors cursor-pointer ${
-                selectedFile
-                  ? 'bg-secondary/20 text-secondary'
-                  : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface'
-              }`}
+              className={`w-8 h-8 rounded flex items-center justify-center transition-colors cursor-pointer ${selectedFile
+                ? 'bg-secondary/20 text-secondary'
+                : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface'
+                }`}
               title="Attach file"
             >
               <span className="material-symbols-outlined text-[20px]">add_circle</span>
             </button>
 
             {/* Code Snippet ('< >') Button */}
-            <button 
+            <button
               type="button"
               onClick={() => setIsCodeMode(prev => !prev)}
-              className={`w-8 h-8 rounded flex items-center justify-center transition-colors cursor-pointer ${
-                isCodeMode 
-                  ? 'bg-primary/20 text-primary border border-primary/30' 
-                  : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface'
-              }`}
+              className={`w-8 h-8 rounded flex items-center justify-center transition-colors cursor-pointer ${isCodeMode
+                ? 'bg-primary/20 text-primary border border-primary/30'
+                : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface'
+                }`}
               title="Code snippet"
             >
               <span className="material-symbols-outlined text-[20px]">code</span>
@@ -272,7 +280,7 @@ export default function MessageInput({ channelId, onMessageSent }) {
           </div>
 
           {/* Lime-green Send Button */}
-          <button 
+          <button
             type="button"
             onClick={handleSend}
             disabled={!canSend || isSending}

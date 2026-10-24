@@ -5,6 +5,7 @@ import { api } from '../services/api';
 export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [bio, setBio] = useState('');
   const [skillsStr, setSkillsStr] = useState('');
   const [batch, setBatch] = useState('');
@@ -27,18 +28,17 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
   const handleAvatarFile = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        setErrorMsg('Image size should be less than 3MB');
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMsg('Image size should be less than 5MB');
         return;
       }
       setErrorMsg('');
-      const reader = new FileReader();
-      reader.onload = () => {
-        setAvatar(reader.result);
-      };
-      reader.readAsDataURL(file);
+      setSelectedFile(file);
+      // Instant local preview
+      setAvatar(URL.createObjectURL(file));
     }
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,9 +53,16 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
     const skillsArray = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
 
     try {
+      let finalAvatarUrl = avatar;
+
+      if (selectedFile) {
+        const uploadRes = await api.uploadAvatar(selectedFile);
+        finalAvatarUrl = uploadRes.avatarUrl;
+      }
+
       const updatePayload = {
         name: name.trim(),
-        avatar: avatar || null,
+        avatar: finalAvatarUrl || null,
         bio,
         skills: skillsArray,
         batch: batch.trim() || null
@@ -80,7 +87,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
     <AnimatePresence>
       {isOpen && (
         <>
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -88,7 +95,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
             onClick={onClose}
           />
           <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none p-4">
-            <motion.div 
+            <motion.div
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 50, opacity: 0 }}
@@ -96,8 +103,8 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="font-headline-lg-mobile text-on-surface">Edit Profile</h2>
-                <button 
-                  onClick={onClose} 
+                <button
+                  onClick={onClose}
                   className="text-on-surface-variant hover:text-on-surface p-1 rounded-md transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined">close</span>
@@ -111,12 +118,12 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
               )}
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                
+
                 {/* Profile Picture Section */}
                 <div className="flex items-center gap-5 p-3 rounded-xl bg-surface-container-low border border-white/[0.06]">
                   <div className="relative w-18 h-18 rounded-full overflow-hidden shrink-0 bg-surface-container-high border-2 border-primary/30 flex items-center justify-center group">
                     {avatar ? (
-                      <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={avatar?.startsWith('/uploads') ? `http://localhost:5000${avatar}` : avatar} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <span className="material-symbols-outlined text-on-surface-variant text-3xl">person</span>
                     )}
@@ -127,12 +134,12 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                       Profile Picture
                     </label>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleAvatarFile} 
-                        accept="image/*" 
-                        className="hidden" 
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleAvatarFile}
+                        accept="image/*"
+                        className="hidden"
                       />
                       <button
                         type="button"
@@ -165,7 +172,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 material-symbols-outlined text-outline-variant text-[20px]">person</span>
-                    <input 
+                    <input
                       type="text"
                       required
                       value={name}
@@ -181,7 +188,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                   <label className="font-mono-sm text-on-surface-variant block mb-2 uppercase tracking-wider text-xs">
                     Terminal Log (Bio)
                   </label>
-                  <textarea 
+                  <textarea
                     required
                     rows="3"
                     value={bio}
@@ -190,13 +197,13 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                     placeholder="Tell us about yourself..."
                   />
                 </div>
-                
+
                 {/* Skills Input */}
                 <div>
                   <label className="font-mono-sm text-on-surface-variant block mb-2 uppercase tracking-wider text-xs">
                     Skills (Comma separated)
                   </label>
-                  <input 
+                  <input
                     type="text"
                     required
                     value={skillsStr}
@@ -211,7 +218,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                   <label className="font-mono-sm text-on-surface-variant block mb-2 uppercase tracking-wider text-xs">
                     Graduation Batch (Optional)
                   </label>
-                  <input 
+                  <input
                     type="text"
                     value={batch}
                     onChange={(e) => setBatch(e.target.value)}
@@ -222,14 +229,14 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/[0.08]">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={onClose}
                     className="px-5 py-2 font-button-text text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-lg transition-colors cursor-pointer text-sm"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     type="submit"
                     disabled={isLoading}
                     className="bg-primary text-on-primary font-button-text px-6 py-2 rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150 flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100 cursor-pointer text-sm shadow-md"

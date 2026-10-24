@@ -157,10 +157,10 @@ export default function ChannelView() {
                 </button>
               </div>
 
-              {/* Body Empty State */}
-              <div className="flex-1 p-6 flex flex-col items-center justify-center text-center gap-3 overflow-y-auto">
+              {/* Body Empty State / File List */}
+              <div className="flex-1 p-5 flex flex-col gap-3 overflow-y-auto custom-scrollbar">
                 {isPinnedOpen ? (
-                  <>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
                     <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-1">
                       <span className="material-symbols-outlined text-2xl">push_pin</span>
                     </div>
@@ -168,18 +168,64 @@ export default function ChannelView() {
                     <p className="font-body-md text-xs text-on-surface-variant leading-relaxed max-w-[260px]">
                       No pinned messages in this channel yet. Pin key discussions or resources to keep them easily accessible.
                     </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-14 h-14 rounded-full bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary mb-1">
-                      <span className="material-symbols-outlined text-2xl">folder_open</span>
+                  </div>
+                ) : (() => {
+                  const channelFiles = messages
+                    .filter(m => (m.attachment?.fileName || m.payload?.fileName))
+                    .map(m => m.attachment || m.payload);
+
+                  if (channelFiles.length === 0) {
+                    return (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
+                        <div className="w-14 h-14 rounded-full bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary mb-1">
+                          <span className="material-symbols-outlined text-2xl">folder_open</span>
+                        </div>
+                        <h3 className="font-button-text text-sm text-on-surface">Shared resources</h3>
+                        <p className="font-body-md text-xs text-on-surface-variant leading-relaxed max-w-[260px]">
+                          Datasets, files, and snippets uploaded in #{displayChannelName} will be organized here.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <span className="font-mono-sm text-xs text-on-surface-variant uppercase tracking-wider mb-1">
+                        Files in #{displayChannelName} ({channelFiles.length})
+                      </span>
+                      {channelFiles.map((file, idx) => {
+                        const fileUrl = file.fileUrl
+                          ? (file.fileUrl.startsWith('http') ? file.fileUrl : `http://localhost:5000${file.fileUrl}`)
+                          : '#';
+                        return (
+                          <a
+                            key={idx}
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={file.fileName}
+                            className="flex items-center gap-3 p-3 bg-surface-container rounded-lg border border-white/[0.04] hover:bg-surface-variant transition-colors group/file no-underline"
+                          >
+                            <div className="w-9 h-9 rounded bg-secondary-container/20 flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-secondary-container text-[18px]">
+                                {file.fileType === 'CSV' ? 'csv' : 'description'}
+                              </span>
+                            </div>
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span className="font-mono-label text-xs text-on-surface truncate">{file.fileName}</span>
+                              <span className="font-mono-sm text-[10px] text-on-surface-variant">
+                                {file.fileSize ? `${file.fileSize} • ` : ''}{file.fileType || 'FILE'}
+                              </span>
+                            </div>
+                            <span className="material-symbols-outlined text-[18px] text-on-surface-variant group-hover/file:text-on-surface">
+                              download
+                            </span>
+                          </a>
+                        );
+                      })}
                     </div>
-                    <h3 className="font-button-text text-sm text-on-surface">Shared resources</h3>
-                    <p className="font-body-md text-xs text-on-surface-variant leading-relaxed max-w-[260px]">
-                      Shared resources will appear here. Datasets, files, and snippets uploaded in #{displayChannelName} will be organized here.
-                    </p>
-                  </>
-                )}
+                  );
+                })()}
               </div>
             </motion.aside>
           </>

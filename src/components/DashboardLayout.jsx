@@ -74,23 +74,31 @@ export default function DashboardLayout() {
   });
 
   const currentUserId = user?.id || user?._id;
-  const isDirectMember = (c) => {
+
+  // 1. Communities I created
+  const isCreatedByMe = (c) => {
+    if (!currentUserId) return false;
+    return c.admin && (String(c.admin) === String(currentUserId) || (c.admin._id && String(c.admin._id) === String(currentUserId)));
+  };
+
+  // 2. Communities I was accepted into / joined
+  const isAcceptedMember = (c) => {
     if (!currentUserId || !c.members || !Array.isArray(c.members)) return false;
     return c.members.some(m => String(m) === String(currentUserId) || (m._id && String(m._id) === String(currentUserId)));
   };
 
-  const memberChannels = channels.filter(isDirectMember);
-  const otherChannels = channels.filter(c => !isDirectMember(c));
+  // 3. Communities matching preferences selected when registering (user.skills)
+  const isRegisteredPreference = (c) => {
+    if (!rawUserSkills || rawUserSkills.length === 0) return false;
 
-  const matchingChannels = otherChannels.filter(c => {
-    // 1. Direct match on channel.skillId
+    // Direct match on channel.skillId
     if (c.skillId && userSkillIdSet.has(String(c.skillId))) return true;
 
-    // 2. Match if skill object corresponding to channel.skillId has its name in user.skills
+    // Match if associated skill name is in user's preferences
     const skillObj = skills.find(sk => sk.id === c.skillId || sk._id === c.skillId);
     if (skillObj && userSkillNames.has(skillObj.name.toLowerCase())) return true;
 
-    // 3. Normalized channel name (e.g., #python-help -> python) match
+    // Normalized channel name (e.g., #python-help matches preference "Python")
     const cleanChanName = (c.name || '').replace(/^[#]/, '').toLowerCase();
     for (const skillName of userSkillNames) {
       const normalizedSkill = skillName.replace(/[^a-z0-9]/g, '');
@@ -100,13 +108,18 @@ export default function DashboardLayout() {
       }
     }
     return false;
+  };
+
+  // Strict Rule: Include ONLY communities created, accepted, or matching registered preferences
+  const myCommunitiesMap = new Map();
+  channels.forEach(c => {
+    if (isCreatedByMe(c) || isAcceptedMember(c) || isRegisteredPreference(c)) {
+      myCommunitiesMap.set(c.id || c._id, c);
+    }
   });
 
-  const joinedChannels = memberChannels.length > 0 
-    ? [...memberChannels, ...matchingChannels.filter(mc => !memberChannels.some(m => m.id === mc.id || m._id === mc._id)).slice(0, 2)]
-    : (matchingChannels.length > 0 ? matchingChannels.slice(0, 2) : channels.slice(0, 2));
-
-  const suggestedChannels = channels.filter(c => !joinedChannels.some(jc => jc.id === c.id || jc._id === c._id));
+  const joinedChannels = Array.from(myCommunitiesMap.values());
+  const suggestedChannels = channels.filter(c => !myCommunitiesMap.has(c.id || c._id));
 
   return (
     <div className="bg-background min-h-screen text-on-background font-body-md flex">

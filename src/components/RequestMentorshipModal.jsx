@@ -61,7 +61,7 @@ export default function RequestMentorshipModal({ isOpen, onClose, mentor, onSubm
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-surface-variant overflow-hidden border border-white/10 shrink-0">
                 {mentor.avatar ? (
-                  <img src={mentor.avatar} alt={mentor.name} className="w-full h-full object-cover" />
+                  <img src={mentor.avatar.startsWith('/uploads') ? `http://localhost:5000${mentor.avatar}` : mentor.avatar} alt={mentor.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-primary font-headline-lg bg-primary/10">
                     {mentor.name ? mentor.name.charAt(0).toUpperCase() : 'M'}

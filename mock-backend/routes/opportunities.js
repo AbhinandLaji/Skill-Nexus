@@ -77,10 +77,33 @@ const formatOpportunity = (opp) => {
     };
 };
 
-// GET /api/opportunities - List all opportunities
+// GET /api/opportunities - Search & filter opportunities via query params
 router.get('/', async (req, res) => {
     try {
-        let opps = await Opportunity.find().sort({ createdAt: -1 });
+        const { category, search, tag } = req.query;
+        const queryFilter = {};
+
+        // 1. Filter by category (?category=internship)
+        if (category && category !== 'all') {
+            queryFilter.category = category.toLowerCase();
+        }
+
+        // 2. Keyword search in title, organization, or description (?search=python)
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i'); // case-insensitive regex
+            queryFilter.$or = [
+                { title: searchRegex },
+                { organization: searchRegex },
+                { description: searchRegex }
+            ];
+        }
+
+        // 3. Filter by specific skill/tag (?tag=React)
+        if (tag && tag.trim()) {
+            queryFilter.tags = { $in: [new RegExp(tag.trim(), 'i')] };
+        }
+
+        let opps = await Opportunity.find(queryFilter).sort({ createdAt: -1 });
 
         // Auto-seed if database collection is empty so UI is immediately populated
         if (!opps || opps.length === 0) {

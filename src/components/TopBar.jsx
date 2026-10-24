@@ -121,7 +121,7 @@ export default function TopBar({ user, _skills, isSidebarExpanded, setIsSidebarE
             <div className="flex-shrink-0">
               {user.avatar ? (
                 <img 
-                  src={user.avatar} 
+                  src={user.avatar.startsWith('/uploads') ? `http://localhost:5000${user.avatar}` : user.avatar} 
                   alt={user.name || 'User'} 
                   className="w-8 h-8 rounded-full border border-white/[0.1] object-cover"
                 />

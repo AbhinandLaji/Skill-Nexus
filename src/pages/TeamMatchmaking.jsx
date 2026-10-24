@@ -19,10 +19,15 @@ export default function TeamMatchmaking() {
   const fetchTeams = async () => {
     setIsLoading(true);
     try {
-      const data = await api.getTeams();
-      setTeams(data);
+      const currentUid = user?.id || user?._id;
+      const data = await api.getTeams({
+        skill: activeSkillFilter !== 'All' ? activeSkillFilter : undefined,
+        type: activeTypeFilter !== 'All' ? activeTypeFilter : undefined,
+        authorId: activeTab === 'my-listings' ? currentUid : undefined
+      });
+      setTeams(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch teams:', err);
     } finally {
       setIsLoading(false);
     }
@@ -30,7 +35,7 @@ export default function TeamMatchmaking() {
 
   useEffect(() => {
     fetchTeams();
-  }, []);
+  }, [activeSkillFilter, activeTypeFilter, activeTab, user]);
 
   const handleDeleteTeam = async (teamId) => {
     if (!window.confirm('Are you sure you want to delete this listing?')) return;
@@ -56,21 +61,8 @@ export default function TeamMatchmaking() {
 
   const myTeamsCount = teams.filter(isMyTeam).length;
 
-  const filteredTeams = teams.filter(team => {
-    if (activeTab === 'my-listings' && !isMyTeam(team)) {
-      return false;
-    }
-    const matchesType = activeTypeFilter === 'All' || team.projectType === activeTypeFilter;
-    const matchesSkill = activeSkillFilter === 'All' || (team.requiredSkills || []).some(s => {
-      const skillName = typeof s === 'string' ? s : (s.name || '');
-      if (activeSkillFilter === 'React / Next.js' && (skillName.includes('Next.js') || skillName.includes('React'))) return true;
-      if (activeSkillFilter === 'Python (AI/ML)' && (skillName.includes('Python') || skillName.includes('AI/ML') || skillName === 'AI')) return true;
-      if (activeSkillFilter === 'Rust' && skillName.includes('Rust')) return true;
-      if (activeSkillFilter === 'UI/UX Design' && skillName.includes('UI/UX')) return true;
-      return false;
-    });
-    return matchesType && matchesSkill;
-  });
+  // Teams are queried and filtered directly from MongoDB
+  const filteredTeams = teams;
 
   return (
     <div className="flex flex-col w-full h-full pb-12 px-4 lg:px-12 mt-8">

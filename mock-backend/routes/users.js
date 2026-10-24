@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { uploadAvatar } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -64,6 +65,42 @@ router.patch('/me', protect, async (req, res) => {
         return res.status(500).json({ message: 'Failed to update user', error: error.message });
     }
 });
+
+// POST /api/users/me/avatar - Upload profile avatar image
+router.post('/me/avatar', protect, (req, res) => {
+    uploadAvatar.single('avatar')(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ message: err.message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: 'No avatar image file was uploaded' });
+        }
+
+        try {
+            const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+            const user = await User.findByIdAndUpdate(
+                req.user._id,
+                { $set: { avatar: avatarUrl } },
+                { new: true }
+            ).select('-password');
+
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            const formatted = formatUser(user);
+            return res.status(200).json({
+                message: 'Avatar uploaded successfully',
+                avatarUrl,
+                user: formatted,
+                ...formatted
+            });
+        } catch (dbErr) {
+            return res.status(500).json({ message: 'Failed to update user avatar in database', error: dbErr.message });
+        }
+    });
+});
+
 
 // GET /api/users/:id - Get public profile of a user
 router.get('/:id', async (req, res) => {

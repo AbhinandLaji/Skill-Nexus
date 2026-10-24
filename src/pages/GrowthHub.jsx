@@ -110,32 +110,31 @@ export default function GrowthHub() {
     showToast('🚀 Mentorship request sent! The mentor has been notified.');
   };
 
-  // Filtered Opportunities
-  const filteredOpportunities = useMemo(() => {
-    return opportunities.filter((opp) => {
-      // Category check
-      if (selectedCategory !== 'all') {
-        const cat = (opp.category || opp.type || '').toLowerCase();
-        if (cat !== selectedCategory && !cat.includes(selectedCategory)) {
-          return false;
+  // Live server-side query processing for opportunities (Module II 2.4 & IV 4.2)
+  useEffect(() => {
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      try {
+        const oppsData = await api.getOpportunities({
+          category: selectedCategory,
+          search: searchQuery
+        });
+        if (isMounted) {
+          setOpportunities(Array.isArray(oppsData) ? oppsData : []);
         }
+      } catch (err) {
+        console.error('Failed to query opportunities from server:', err);
       }
+    }, 250);
 
-      // Search query check
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const titleMatch = (opp.title || '').toLowerCase().includes(q);
-        const orgMatch = (opp.organization || opp.company || '').toLowerCase().includes(q);
-        const tagMatch = Array.isArray(opp.tags) && opp.tags.some((t) => t.toLowerCase().includes(q));
-        const descMatch = (opp.description || '').toLowerCase().includes(q);
-        if (!titleMatch && !orgMatch && !tagMatch && !descMatch) {
-          return false;
-        }
-      }
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [selectedCategory, searchQuery]);
 
-      return true;
-    });
-  }, [opportunities, selectedCategory, searchQuery]);
+  // Opportunities are now queried directly from MongoDB
+  const filteredOpportunities = opportunities;
 
   // Filtered Mentors
   const filteredMentors = useMemo(() => {

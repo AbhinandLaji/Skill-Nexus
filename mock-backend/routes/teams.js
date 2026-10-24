@@ -48,10 +48,10 @@ const slugifyChannelName = (title) => {
     return `#${slug || 'squad'}`;
 };
 
-// GET /api/teams - List all teams (filtered: filled listings automatically disappear from global feed)
+// GET /api/teams - List all teams with MongoDB search & filter query processing
 router.get('/', async (req, res) => {
     try {
-        const { showAll, authorId } = req.query;
+        const { showAll, authorId, skill, type, search } = req.query;
         let query = {};
 
         // If authorId is given or showAll === 'true', allow viewing all status
@@ -60,6 +60,26 @@ router.get('/', async (req, res) => {
         }
         if (authorId) {
             query.authorId = authorId;
+        }
+
+        // 1. Filter by required skill using MongoDB array regex matching
+        if (skill && skill !== 'All') {
+            const cleanSkill = skill.split('/')[0].split('(')[0].trim();
+            query['requiredSkills.name'] = new RegExp(cleanSkill, 'i');
+        }
+
+        // 2. Filter by project type (Hackathon, Long-term, Study Group)
+        if (type && type !== 'All') {
+            query.projectType = new RegExp(type, 'i');
+        }
+
+        // 3. Search across title & description
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            query.$or = [
+                { title: searchRegex },
+                { description: searchRegex }
+            ];
         }
 
         const teams = await Team.find(query).sort({ createdAt: -1 });

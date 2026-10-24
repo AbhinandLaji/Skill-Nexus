@@ -54,7 +54,7 @@ export default function MentorCard({ mentor, onRequestSession, hasRequested = fa
         <div className="relative">
           <div className="w-16 h-16 rounded-2xl bg-surface-variant overflow-hidden border border-white/[0.1] shadow-inner">
             {mentor.avatar ? (
-              <img src={mentor.avatar} alt={mentor.name} className="w-full h-full object-cover" />
+              <img src={mentor.avatar.startsWith('/uploads') ? `http://localhost:5000${mentor.avatar}` : mentor.avatar} alt={mentor.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-primary text-xl font-headline-lg bg-primary/10">
                 {mentor.name ? mentor.name.charAt(0).toUpperCase() : 'M'}

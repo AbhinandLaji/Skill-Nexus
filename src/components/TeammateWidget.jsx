@@ -32,7 +32,7 @@ export default function TeammateWidget({ matches }) {
               <div className="flex items-center gap-3">
                 <div className="relative">
                   {match.avatar ? (
-                    <img src={match.avatar} alt={match.name} className="w-8 h-8 rounded-sm object-cover border border-white/[0.1]" />
+                    <img src={match.avatar.startsWith('/uploads') ? `http://localhost:5000${match.avatar}` : match.avatar} alt={match.name} className="w-8 h-8 rounded-sm object-cover border border-white/[0.1]" />
                   ) : (
                     <div className="w-8 h-8 rounded-sm bg-surface-container-highest border border-white/[0.1] flex items-center justify-center">
                       <span className="font-mono-sm text-on-surface-variant">{match.name.charAt(0)}</span>

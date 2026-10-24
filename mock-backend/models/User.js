@@ -18,6 +18,18 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        isVerified: {
+            type: Boolean,
+            default: false
+        },
+        verificationOtp: {
+            type: String,
+            default: null
+        },
+        otpExpiresAt: {
+            type: Date,
+            default: null
+        },
         skills: {
             type: [String],
             default: []

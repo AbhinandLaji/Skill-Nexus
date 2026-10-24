@@ -6,7 +6,11 @@ export default function ProfileHeader({ user, onEditClick, onLogout }) {
     <section className="w-full flex flex-col md:flex-row items-center md:items-start gap-8 mb-[48px]">
       <div className="relative w-32 h-32 rounded-xl flex-shrink-0 bg-surface-container overflow-hidden">
         {user.avatar ? (
-          <img className="w-full h-full object-cover" src={user.avatar} alt={user.name} />
+          <img 
+            className="w-full h-full object-cover" 
+            src={user.avatar.startsWith('/uploads') ? `http://localhost:5000${user.avatar}` : user.avatar} 
+            alt={user.name} 
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-surface-container-high text-on-surface text-4xl">
             {user.name?.charAt(0) || 'U'}

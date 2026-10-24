@@ -28,10 +28,12 @@ const messageSchema = new mongoose.Schema(
             code: { type: String, default: null }
         },
         attachment: {
+            fileUrl: { type: String, default: null },
             fileName: { type: String, default: null },
             fileSize: { type: String, default: null },
             fileType: { type: String, default: null }
         },
+
         threadCount: {
             type: Number,
             default: 0

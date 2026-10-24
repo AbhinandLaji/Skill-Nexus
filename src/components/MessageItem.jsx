@@ -13,7 +13,11 @@ export default function MessageItem({ message }) {
     >
       <div className="w-10 h-10 rounded overflow-hidden mt-1 shrink-0 bg-surface-container border border-white/[0.08] flex items-center justify-center">
         {message.authorAvatar ? (
-          <img src={message.authorAvatar} alt={message.authorName} className="w-full h-full object-cover" />
+          <img 
+            src={message.authorAvatar.startsWith('/uploads') ? `http://localhost:5000${message.authorAvatar}` : message.authorAvatar} 
+            alt={message.authorName} 
+            className="w-full h-full object-cover" 
+          />
         ) : (
           <span className="font-mono-sm text-on-surface">{message.authorName?.charAt(0) || '?'}</span>
         )}
@@ -41,9 +45,18 @@ export default function MessageItem({ message }) {
           const fileName = fileData.fileName || fileData.filename;
           const fileSize = fileData.fileSize || fileData.size || '';
           const fileType = fileData.fileType || fileName.split('.').pop()?.toUpperCase() || 'FILE';
+          const fullFileUrl = fileData.fileUrl 
+            ? (fileData.fileUrl.startsWith('http') ? fileData.fileUrl : `http://localhost:5000${fileData.fileUrl}`)
+            : '#';
 
           return (
-            <div className="flex items-center gap-4 p-3 bg-surface-container rounded-lg border border-white/[0.04] max-w-sm hover:bg-surface-variant transition-colors cursor-pointer group/file mt-2">
+            <a 
+              href={fullFileUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              download={fileName}
+              className="flex items-center gap-4 p-3 bg-surface-container rounded-lg border border-white/[0.04] max-w-sm hover:bg-surface-variant transition-colors cursor-pointer group/file mt-2 no-underline"
+            >
               <div className="w-10 h-10 rounded bg-secondary-container/20 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-secondary-container">
                   {fileType === 'CSV' ? 'csv' : 'description'}
@@ -56,7 +69,7 @@ export default function MessageItem({ message }) {
                 </span>
               </div>
               <span className="material-symbols-outlined text-on-surface-variant group-hover/file:text-on-surface">download</span>
-            </div>
+            </a>
           );
         })()}
 

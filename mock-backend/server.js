@@ -6,8 +6,10 @@ try {
 }
 
 const express = require('express');
+const path = require('path');
 const mongoose = require('mongoose');
 const cors = require('cors');
+// Load environment variables
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -19,12 +21,14 @@ const mentorsRoutes = require('./routes/mentors');
 const mentorshipRoutes = require('./routes/mentorship');
 const channelsRoutes = require('./routes/channels');
 const notificationsRoutes = require('./routes/notifications');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -36,16 +40,17 @@ app.use('/api/mentors', mentorsRoutes);
 app.use('/api/mentorship', mentorshipRoutes);
 app.use('/api/channels', channelsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
     const isConnected = mongoose.connection.readyState === 1;
-    res.json({ 
+    res.json({
         status: isConnected ? 'ok' : 'connecting',
         dbConnected: isConnected,
         database: mongoose.connection.name || 'disconnected',
         readyState: mongoose.connection.readyState,
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString()
     });
 });
 
