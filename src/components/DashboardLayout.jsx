@@ -116,6 +116,13 @@ export default function DashboardLayout() {
         isExpanded={isSidebarExpanded}
         isLoading={isLoading}
         skills={skills}
+        onChannelCreated={(newChan) => {
+          setChannels(prev => {
+            const exists = prev.some(c => (c.id === newChan.id || c._id === newChan.id));
+            if (exists) return prev;
+            return [newChan, ...prev];
+          });
+        }}
       />
       
       <div 

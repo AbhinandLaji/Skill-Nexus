@@ -39,9 +39,12 @@ app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
+    const isConnected = mongoose.connection.readyState === 1;
     res.json({ 
-        status: 'ok', 
-        database: mongoose.connection ? mongoose.connection.name : 'unknown',
+        status: isConnected ? 'ok' : 'connecting',
+        dbConnected: isConnected,
+        database: mongoose.connection.name || 'disconnected',
+        readyState: mongoose.connection.readyState,
         timestamp: new Date().toISOString() 
     });
 });
@@ -62,15 +65,19 @@ app.use((err, req, res, next) => {
 // Database Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/test';
 
-mongoose.set('bufferCommands', false);
-
-mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 })
-    .then((conn) => {
+const connectDB = async () => {
+    try {
+        const conn = await mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 15000
+        });
         console.log(`MongoDB connected successfully to database: "${conn.connection.name}"`);
-    })
-    .catch((error) => {
+    } catch (error) {
         console.error('MongoDB connection failed:', error.message);
-    });
+        setTimeout(connectDB, 5000);
+    }
+};
+
+connectDB();
 
 const PORT = process.env.PORT || 5000;
 

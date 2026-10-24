@@ -11,6 +11,15 @@ const channelSchema = new mongoose.Schema(
             type: String,
             default: 'squad'
         },
+        description: {
+            type: String,
+            default: ''
+        },
+        admin: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'User',
+            required: true 
+        },
         members: [
             {
                 type: mongoose.Schema.Types.ObjectId,

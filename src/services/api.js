@@ -24,6 +24,13 @@ async function fetcher(endpoint, options = {}) {
   return res.json();
 }
 
+export async function createChannel(channelData) {
+  return fetcher('/channels', {
+    method: 'POST',
+    body: JSON.stringify(channelData),
+  });
+}
+
 export const api = {
   // Auth
   register: (data) => fetcher('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
@@ -62,6 +69,7 @@ export const api = {
 
   // Channels
   getChannels: () => fetcher('/channels'),
+  createChannel: (channelData) => createChannel(channelData),
   sendChannelMessage: (data) => fetcher(`/channels/${data.channelId}/messages`, { method: 'POST', body: JSON.stringify(data) }),
   getMessages: (channelId) => fetcher(`/channels/${channelId}/messages`),
   sendMessage: (channelId, data) => fetcher(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify(data) }),

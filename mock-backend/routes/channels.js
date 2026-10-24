@@ -44,6 +44,8 @@ router.get('/', async (req, res) => {
             _id: c._id.toString(),
             name: c.name,
             skillId: c.skillId,
+            admin: c.admin ? c.admin.toString() : null,
+            description: c.description || '',
             memberCount: c.members && c.members.length > 0 ? c.members.length : (c.memberCount || 1),
             unreadCount: c.unreadCount || 0,
             members: (c.members || []).map(m => m.toString()),
@@ -54,6 +56,33 @@ router.get('/', async (req, res) => {
         return res.json(formatted);
     } catch (error) {
         return res.json([]);
+    }
+});
+
+// POST /api/channels - Create a new community/channel
+router.post('/', protect, async (req, res) => {
+    try {
+        const { name, skillId, isPrivate, description } = req.body;
+        if (!name || !skillId) {
+            return res.status(400).json({ message: 'Channel name and associated skill are required' });
+        }
+
+        const userId = req.user.id || req.user._id;
+
+        const newChannel = await Channel.create({
+            name: name.toLowerCase().replace(/\s+/g, '-'), // enforce slug format
+            skillId,
+            admin: userId,
+            members: [userId],
+            isPrivate: isPrivate || false,
+            description: description || '',
+            memberCount: 1
+        });
+
+        res.status(201).json(newChannel);
+    } catch (error) {
+        console.error('Error creating channel:', error);
+        res.status(500).json({ message: 'Server error creating channel' });
     }
 });
 

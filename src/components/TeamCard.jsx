@@ -91,21 +91,21 @@ export default function TeamCard({ team, currentUser, onDelete }) {
         </div>
       </div>
       
-      <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="pt-4 mt-4 border-t border-white/[0.08] flex flex-row flex-wrap items-center justify-between gap-3 w-full">
+        <div className="flex flex-row items-center gap-3 min-w-0">
           {team.authorAvatar ? (
-            <img className="w-8 h-8 rounded-full object-cover border border-white/10" src={team.authorAvatar} alt={team.authorName} />
+            <img className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0" src={team.authorAvatar} alt={team.authorName} />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-surface-variant border border-white/10 flex items-center justify-center">
-              <span className="font-mono-label text-mono-label text-on-surface">{team.authorName.charAt(0)}</span>
+            <div className="w-8 h-8 rounded-full bg-surface-variant border border-white/10 flex items-center justify-center shrink-0">
+              <span className="font-mono-label text-mono-label text-on-surface">{team.authorName ? team.authorName.charAt(0) : '?'}</span>
             </div>
           )}
-          <div>
-            <p className="font-mono-label text-mono-label text-on-surface">{team.authorName}</p>
-            <p className="font-mono-sm text-mono-sm text-on-surface-variant flex items-center gap-1.5">
-              <span>{team.memberCount || 1}/{team.maxMembers || 4} members</span>
+          <div className="flex flex-col min-w-0">
+            <p className="font-mono-label text-mono-label text-on-surface truncate">{team.authorName}</p>
+            <p className="font-mono-sm text-mono-sm text-on-surface-variant flex items-center gap-1.5 truncate">
+              <span className="truncate">{team.memberCount || 1}/{team.maxMembers || 4} members</span>
               {isFilled && (
-                <span className="px-1.5 py-0.2 rounded text-[10px] bg-error-container/20 text-error">
+                <span className="px-1.5 py-0.2 rounded text-[10px] bg-error-container/20 text-error shrink-0">
                   Full
                 </span>
               )}
@@ -113,7 +113,7 @@ export default function TeamCard({ team, currentUser, onDelete }) {
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-row items-center gap-2 shrink-0">
           {team.channelId && (isOwner || isMember) && (
             <Link
               to={`/dashboard/channels/${team.channelId}`}

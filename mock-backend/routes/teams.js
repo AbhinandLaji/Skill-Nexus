@@ -114,6 +114,7 @@ router.post('/', protect, async (req, res) => {
         const channel = await Channel.create({
             name: channelName,
             skillId: (normalizedSkills[0]?.name) || 'squad',
+            admin: req.user._id,
             members: [req.user._id],
             memberCount: 1,
             isPrivate: false

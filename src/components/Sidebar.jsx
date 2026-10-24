@@ -1,6 +1,7 @@
-import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import CreateCommunityModal from './CreateCommunityModal';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -15,7 +16,41 @@ const itemVariants = {
   show: { opacity: 1, x: 0 }
 };
 
-export default function Sidebar({ joinedChannels, suggestedChannels, isExpanded, isLoading, skills }) {
+export default function Sidebar({ joinedChannels = [], suggestedChannels = [], isExpanded, isLoading, skills = [], onChannelCreated }) {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [localChannels, setLocalChannels] = useState(joinedChannels || []);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setLocalChannels(joinedChannels || []);
+  }, [joinedChannels]);
+
+  const handleChannelSuccess = (newChannel) => {
+    const formattedChan = {
+      ...newChannel,
+      id: newChannel.id || newChannel._id,
+      _id: newChannel._id || newChannel.id,
+      name: newChannel.name,
+      skillId: newChannel.skillId,
+      memberCount: newChannel.memberCount || 1,
+      unreadCount: 0
+    };
+
+    setLocalChannels(prev => {
+      const exists = prev.some(c => (c.id === formattedChan.id || c._id === formattedChan.id));
+      if (exists) return prev;
+      return [formattedChan, ...prev];
+    });
+
+    if (onChannelCreated) {
+      onChannelCreated(formattedChan);
+    }
+
+    if (formattedChan.id) {
+      navigate(`/dashboard/channels/${formattedChan.id}`);
+    }
+  };
+
   return (
     <aside 
       className={`fixed left-0 top-0 h-full bg-surface-container-lowest border-r border-white/[0.08] z-50 flex flex-col transition-all duration-300 ${
@@ -48,20 +83,41 @@ export default function Sidebar({ joinedChannels, suggestedChannels, isExpanded,
           <motion.div variants={containerVariants} initial="hidden" animate="show">
             
             <div className="mb-8">
-              {isExpanded && (
-                <h3 className="font-mono-sm text-on-tertiary-container uppercase px-4 mb-4 whitespace-nowrap">
-                  My Communities
-                </h3>
+              {isExpanded ? (
+                <div className="flex items-center justify-between px-4 mb-4">
+                  <h3 className="font-mono-sm text-on-tertiary-container uppercase whitespace-nowrap">
+                    My Communities
+                  </h3>
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    title="Create Community"
+                    aria-label="Create Community"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-center mb-4">
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    title="Create Community"
+                    aria-label="Create Community"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">add</span>
+                  </button>
+                </div>
               )}
               <div className="space-y-1">
-                {joinedChannels.length === 0 ? (
+                {localChannels.length === 0 ? (
                   isExpanded && (
                     <div className="px-4 py-2 text-xs text-on-surface-variant/70 italic">
                       No communities joined yet.
                     </div>
                   )
                 ) : (
-                  joinedChannels.map(channel => {
+                  localChannels.map(channel => {
                     const skill = skills?.find(s => s.id === channel.skillId);
                     return (
                       <motion.div key={channel.id} variants={itemVariants}>
@@ -171,6 +227,15 @@ export default function Sidebar({ joinedChannels, suggestedChannels, isExpanded,
           </motion.div>
         )}
       </nav>
+
+      {isCreateModalOpen && (
+        <CreateCommunityModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={handleChannelSuccess}
+          skills={skills}
+        />
+      )}
     </aside>
   );
 }
