@@ -11,8 +11,17 @@ It's a platform for students — built by students — to find collaborators, ge
 - 🤝 **Find teammates** — Post or browse teams for hackathons, long-term projects, or study groups
 - 🧑‍🏫 **Get mentorship** — Ask questions, get answers from verified seniors/mentors
 - 💬 **Skill channels** — Chat in topic-based rooms like `#python-help` or `#dsa-prep`
+- ✉️ **Direct and group messages** — Start private chats with registered members and call by audio or video
 - 🌐 **Opportunities** — Browse internships, hackathons, and tech events
 - 👤 **Your profile** — Showcase your skills, projects, and batch
+
+Channel messages are saved through the REST API and broadcast live to authenticated channel members with Socket.IO. Message history remains available through the existing API when a user opens a channel.
+
+Text channel messages support emoji reactions, threaded replies, and pinned messages. Reactions and threads are available to channel members; channel owners can pin or unpin messages.
+
+Community channels can be created as text, forum, or voice channels and assigned to a category that groups them in the sidebar. Forum channels support discussion posts and replies. Community members can schedule events and RSVP from a channel. Voice channels use browser WebRTC for microphone audio and screen sharing, with Socket.IO for authenticated signaling. Microphone and screen capture require browser permission and a secure origin (HTTPS or localhost). The current peer-to-peer setup uses a public STUN server and does not include a TURN relay, so connections may fail on restrictive networks; production deployments should configure TURN and consider an SFU for larger rooms.
+
+Direct and group messages are stored in MongoDB. Start a conversation with one or more registered email addresses (up to eight members total). Audio and video calls use peer-to-peer WebRTC with the same browser permissions and network limitations as voice channels.
 
 ---
 
@@ -98,7 +107,18 @@ MONGODB_URI=mongodb://localhost:27017/skillnexus
 JWT_SECRET=pick_something_strong_here
 PORT=5000
 NODE_ENV=development
+# Optional email delivery (local development shows the OTP in the app if these are unset/invalid)
+EMAIL_USER=your-sender@gmail.com
+EMAIL_PASS=your-gmail-app-password
+# For non-Gmail SMTP providers, also set:
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+# Optional verified sender address:
+EMAIL_FROM=your-sender@example.com
 ```
+
+Signup and unverified login require email OTP verification. In development, if SMTP is missing or unavailable, the app displays a development-only OTP so local signup can continue. Set `NODE_ENV=production` in production; production never returns OTP codes and requires working SMTP settings. Keep `.env` private and never commit provider passwords.
 
 ---
 

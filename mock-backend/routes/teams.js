@@ -1,5 +1,6 @@
 const express = require('express');
 const Team = require('../models/Team');
+const User = require('../models/User');
 const Channel = require('../models/Channel');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
@@ -47,6 +48,38 @@ const slugifyChannelName = (title) => {
         .slice(0, 24);
     return `#${slug || 'squad'}`;
 };
+
+// GET /api/teams/recommendations - Rank open teams by overlap with the caller's skills
+router.get('/recommendations', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('skills');
+        const userSkills = (user?.skills || []).map(skill => String(skill).trim().toLowerCase()).filter(Boolean);
+        const teams = await Team.find({ status: { $ne: 'filled' } }).sort({ createdAt: -1 });
+
+        const recommendations = teams
+            .filter(team => {
+                const max = team.maxMembers || (team.lookingForCount ? team.lookingForCount + 1 : 4);
+                const memberIds = (team.members || []).map(member => String(member));
+                const isOwner = team.authorId && String(team.authorId) === String(req.user._id);
+                return !isOwner && !memberIds.includes(String(req.user._id)) && memberIds.length < max;
+            })
+            .map(team => {
+                const requiredSkills = (team.requiredSkills || []).map(skill =>
+                    String(typeof skill === 'string' ? skill : skill.name || '').trim()
+                ).filter(Boolean);
+                const matchedSkills = requiredSkills.filter(skill => userSkills.includes(skill.toLowerCase()));
+                const score = requiredSkills.length ? Math.round((matchedSkills.length / requiredSkills.length) * 100) : 0;
+                return { ...formatTeam(team), matchScore: score, matchedSkills };
+            })
+            .sort((a, b) => b.matchScore - a.matchScore || new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+            .slice(0, 5);
+
+        return res.json(recommendations);
+    } catch (error) {
+        console.error('Error fetching team recommendations:', error);
+        return res.status(500).json({ message: 'Failed to fetch team recommendations' });
+    }
+});
 
 // GET /api/teams - List all teams with MongoDB search & filter query processing
 router.get('/', async (req, res) => {
@@ -203,7 +236,7 @@ router.post('/:id/accept', protect, async (req, res) => {
         }
 
         // Verify that the caller is the team author
-        if (team.authorId && req.user._id.toString() !== team.authorId.toString()) {
+        if (!team.authorId || String(req.user._id) !== String(team.authorId)) {
             return res.status(403).json({ message: 'Only the team creator can accept join requests' });
         }
 
@@ -322,7 +355,7 @@ router.post('/:id/reject', protect, async (req, res) => {
         }
 
         // Verify caller is team author
-        if (team.authorId && req.user._id.toString() !== team.authorId.toString()) {
+        if (!team.authorId || String(req.user._id) !== String(team.authorId)) {
             return res.status(403).json({ message: 'Only the team creator can reject join requests' });
         }
 

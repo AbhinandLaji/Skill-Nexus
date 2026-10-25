@@ -8,6 +8,7 @@ import TeamMatchmaking from './pages/TeamMatchmaking';
 import MentorshipHub from './pages/MentorshipHub';
 import ChannelView from './pages/ChannelView';
 import UserProfile from './pages/UserProfile';
+import DirectMessages from './pages/DirectMessages';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="growth-hub" element={<MentorshipHub />} />
           <Route path="channels/:channelId" element={<ChannelView />} />
           <Route path="profile" element={<UserProfile />} />
+          <Route path="messages" element={<DirectMessages />} />
         </Route>
       </Routes>
     </BrowserRouter>

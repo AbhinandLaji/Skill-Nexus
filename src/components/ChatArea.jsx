@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import MessageItem from './MessageItem';
 
-export default function ChatArea({ messages }) {
+export default function ChatArea({ messages, channelId, canPin, onOpenThread, onToggleReaction, onTogglePin }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function ChatArea({ messages }) {
       </div>
 
       {messages.map(msg => (
-        <MessageItem key={msg.id} message={msg} />
+        <MessageItem key={msg.id} message={msg} channelId={channelId} canPin={canPin} onOpenThread={onOpenThread} onToggleReaction={onToggleReaction} onTogglePin={onTogglePin} />
       ))}
       <div ref={bottomRef} />
     </div>

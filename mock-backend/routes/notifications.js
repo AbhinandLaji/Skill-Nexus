@@ -92,6 +92,18 @@ router.post('/:id/respond', protect, async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to respond to this notification' });
         }
 
+        if (notification.type === 'channel_invite') {
+            const channel = await Channel.findById(notification.targetId);
+            if (!channel || !channel.isPrivate) return res.status(404).json({ message: 'Private channel invitation not found' });
+            const invite = (channel.invitations || []).find((item) =>
+                item.email === String(req.user.email || '').toLowerCase() && item.status === 'pending'
+            );
+            if (!invite) return res.status(403).json({ message: 'No pending invitation exists for your account.' });
+            invite.status = isAccept ? 'accepted' : 'declined';
+            if (isAccept) channel.members.addToSet(req.user._id);
+            await channel.save();
+        }
+
         notification.status = newStatus;
         notification.read = true;
         await notification.save();

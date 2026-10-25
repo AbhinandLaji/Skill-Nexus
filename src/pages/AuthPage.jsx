@@ -144,8 +144,8 @@ export default function AuthPage() {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      await api.resendOtp({ email: email.trim() });
-      setOtpSuccessMsg('A new 6-digit code has been dispatched to your email.');
+      const res = await api.resendOtp({ email: email.trim() });
+      setOtpSuccessMsg(res.message || 'A new 6-digit code has been dispatched to your email.');
       setResendCountdown(30);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to resend verification code.');

@@ -2,7 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import CodeSnippetBlock from './CodeSnippetBlock';
 
-export default function MessageItem({ message }) {
+const REACTION_CHOICES = ['👍', '❤️', '😂', '😮', '🎉', '✅', '🔥'];
+
+export default function MessageItem({ message, channelId, canPin, onOpenThread, onToggleReaction, onTogglePin }) {
+  const isPersisted = /^[a-f\d]{24}$/i.test(message.id || '');
   // If the message has a thread property, we render the thread snippet.
   // For standard messages, we render text, code, or attachments.
   return (
@@ -45,16 +48,23 @@ export default function MessageItem({ message }) {
           const fileName = fileData.fileName || fileData.filename;
           const fileSize = fileData.fileSize || fileData.size || '';
           const fileType = fileData.fileType || fileName.split('.').pop()?.toUpperCase() || 'FILE';
-          const fullFileUrl = fileData.fileUrl 
-            ? (fileData.fileUrl.startsWith('http') ? fileData.fileUrl : `http://localhost:5000${fileData.fileUrl}`)
+          const storedFilename = fileData.fileUrl ? fileData.fileUrl.split('/').pop() : '';
+          const downloadUrl = channelId && storedFilename
+            ? `http://localhost:5000/api/channels/${channelId}/files/${encodeURIComponent(storedFilename)}`
             : '#';
 
           return (
-            <a 
-              href={fullFileUrl} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              download={fileName}
+            <button
+              type="button"
+              onClick={async () => {
+                const token = localStorage.getItem('auth_token');
+                const response = await fetch(downloadUrl, { headers: { Authorization: `Bearer ${token}` } });
+                if (!response.ok) return;
+                const blobUrl = URL.createObjectURL(await response.blob());
+                const link = document.createElement('a');
+                link.href = blobUrl; link.download = fileName; link.click();
+                URL.revokeObjectURL(blobUrl);
+              }}
               className="flex items-center gap-4 p-3 bg-surface-container rounded-lg border border-white/[0.04] max-w-sm hover:bg-surface-variant transition-colors cursor-pointer group/file mt-2 no-underline"
             >
               <div className="w-10 h-10 rounded bg-secondary-container/20 flex items-center justify-center shrink-0">
@@ -69,29 +79,28 @@ export default function MessageItem({ message }) {
                 </span>
               </div>
               <span className="material-symbols-outlined text-on-surface-variant group-hover/file:text-on-surface">download</span>
-            </a>
+            </button>
           );
         })()}
 
-        {message.threadCount > 0 && (
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {message.threadParticipants?.map((avatar, idx) => (
-                avatar ? (
-                  <img key={idx} src={avatar} className="w-5 h-5 rounded-full border border-surface-container object-cover" alt="reply" />
-                ) : (
-                  <div key={idx} className="w-5 h-5 rounded-full border border-surface-container bg-surface flex items-center justify-center">
-                    <span className="text-[8px] text-on-surface">?</span>
-                  </div>
-                )
-              ))}
-            </div>
-            <button className="font-mono-sm text-mono-sm text-primary-fixed hover:underline flex items-center gap-1">
-              {message.threadCount} replies
-              <span className="text-on-surface-variant text-[11px] ml-1">Last reply {message.lastReplyAt}</span>
+        {isPersisted && <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {(message.reactions || []).map((reaction) => (
+            <button key={reaction.emoji} type="button" onClick={() => onToggleReaction?.(message.id, reaction.emoji)} aria-pressed={reaction.reactedByMe} className={`rounded-full border px-2 py-0.5 text-xs ${reaction.reactedByMe ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 bg-surface-container text-on-surface-variant'}`}>
+              {reaction.emoji} {reaction.count}
             </button>
+          ))}
+          <div className="flex gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            {REACTION_CHOICES.map((emoji) => <button key={emoji} type="button" title={`React ${emoji}`} aria-label={`React ${emoji}`} onClick={() => onToggleReaction?.(message.id, emoji)} className="rounded px-1 py-0.5 text-sm hover:bg-surface-container">{emoji}</button>)}
           </div>
-        )}
+          <button type="button" onClick={() => onOpenThread?.(message)} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-primary-fixed hover:bg-surface-container">
+            <span className="material-symbols-outlined text-[15px]">forum</span>{message.threadCount ? `${message.threadCount} replies` : 'Reply in thread'}
+          </button>
+          {canPin && <button type="button" onClick={() => onTogglePin?.(message.id)} title={message.isPinned ? 'Unpin message' : 'Pin message'} aria-label={message.isPinned ? 'Unpin message' : 'Pin message'} className="rounded px-1.5 py-1 text-on-surface-variant hover:bg-surface-container hover:text-primary">
+            <span className="material-symbols-outlined text-[16px]">{message.isPinned ? 'keep_off' : 'push_pin'}</span>
+          </button>}
+          {message.isPinned && <span className="flex items-center gap-1 text-[10px] text-primary"><span className="material-symbols-outlined text-[13px]">push_pin</span>Pinned</span>}
+        </div>}
+
       </div>
     </motion.div>
   );

@@ -19,7 +19,7 @@ export default function DashboardHome() {
         const [questionsData, oppsData, teamsData] = await Promise.all([
           api.getQuestions().catch(() => []),
           api.getOpportunities().catch(() => []),
-          api.getTeams().catch(() => [])
+          api.getTeamRecommendations().catch(() => [])
         ]);
 
         if (isMounted) {
@@ -39,24 +39,7 @@ export default function DashboardHome() {
           }));
           setFeedItems(formattedFeed);
 
-          // Radar matches from other teams seeking collaborators (exclude current user's listings)
-          const currentUid = user?.id || user?._id;
-          const otherMatches = (teamsData || [])
-            .filter(team => {
-              if (!user) return true;
-              if (team.authorId && currentUid && String(team.authorId) === String(currentUid)) return false;
-              if (team.authorName && user.name && team.authorName.toLowerCase() === user.name.toLowerCase()) return false;
-              return true;
-            })
-            .slice(0, 3)
-            .map((team) => ({
-              id: team.id || team._id,
-              name: team.authorName || 'Collaborator',
-              needs: (team.requiredSkills || []).map(s => (typeof s === 'string' ? s : s.name)).join(', ') || 'Collaborators',
-              colorAccent: '#B4F461',
-              avatar: team.authorAvatar || null
-            }));
-          setRadarMatches(otherMatches);
+          setRadarMatches((teamsData || []).slice(0, 3));
 
           // Upcoming events from live opportunities
           setUpcomingEvents(oppsData || []);

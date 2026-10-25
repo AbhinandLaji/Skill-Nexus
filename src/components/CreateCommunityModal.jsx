@@ -7,6 +7,8 @@ export default function CreateCommunityModal({ isOpen, onClose, onSuccess, skill
   const [skillId, setSkillId] = useState('');
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [channelType, setChannelType] = useState('text');
+  const [category, setCategory] = useState('General');
   const [availableSkills, setAvailableSkills] = useState(skills);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -59,6 +61,8 @@ export default function CreateCommunityModal({ isOpen, onClose, onSuccess, skill
       const created = await api.createChannel({
         name: slugName,
         skillId,
+        channelType,
+        category: category.trim() || 'General',
         description: description.trim(),
         isPrivate
       });
@@ -79,6 +83,8 @@ export default function CreateCommunityModal({ isOpen, onClose, onSuccess, skill
     setName('');
     setDescription('');
     setIsPrivate(false);
+    setChannelType('text');
+    setCategory('General');
     setErrorMsg('');
     if (onClose) onClose();
   };
@@ -148,6 +154,34 @@ export default function CreateCommunityModal({ isOpen, onClose, onSuccess, skill
                     <span>Channel handle:</span>
                     <span className="text-primary font-mono">{formatSlug(name)}</span>
                   </p>
+                </div>
+
+                <div>
+                  <span className="font-mono-sm text-on-surface-variant block mb-1.5 uppercase text-xs">Channel Type</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'text', label: 'Text channel', icon: 'tag' },
+                      { value: 'voice', label: 'Voice channel', icon: 'volume_up' },
+                      { value: 'forum', label: 'Forum channel', icon: 'forum' },
+                    ].map((type) => (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => setChannelType(type.value)}
+                        aria-pressed={channelType === type.value}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${channelType === type.value ? 'border-primary bg-primary/10 text-primary' : 'border-white/[0.08] text-on-surface-variant hover:bg-white/[0.04]'}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{type.icon}</span>
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-mono-sm text-on-surface-variant block mb-1.5 uppercase text-xs">Channel Category</label>
+                  <input maxLength={50} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="General, Projects, Help…" className="w-full bg-surface-container-low border border-white/[0.08] rounded-lg py-2.5 px-4 focus:outline-none focus:border-primary text-on-surface" />
+                  <p className="mt-1 text-[11px] text-on-surface-variant/70">Channels with the same category are grouped in the sidebar.</p>
                 </div>
 
                 <div>

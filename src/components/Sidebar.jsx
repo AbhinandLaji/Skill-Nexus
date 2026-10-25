@@ -16,6 +16,15 @@ const itemVariants = {
   show: { opacity: 1, x: 0 }
 };
 
+const groupChannels = (channels) => {
+  const groups = new Map();
+  channels.forEach((channel) => {
+    const category = channel.category?.trim() || 'General';
+    groups.set(category, [...(groups.get(category) || []), channel]);
+  });
+  return [...groups.entries()];
+};
+
 export default function Sidebar({ joinedChannels = [], suggestedChannels = [], isExpanded, isLoading, skills = [], onChannelCreated }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [localChannels, setLocalChannels] = useState(joinedChannels || []);
@@ -117,7 +126,10 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                     </div>
                   )
                 ) : (
-                  localChannels.map(channel => {
+                  groupChannels(localChannels).map(([category, categoryChannels]) => (
+                    <div key={category}>
+                      {isExpanded && <p className="px-4 pt-3 pb-1 text-[10px] font-mono-sm uppercase tracking-wider text-on-surface-variant/70">{category}</p>}
+                      {categoryChannels.map(channel => {
                     const skill = skills?.find(s => s.id === channel.skillId);
                     return (
                       <motion.div key={channel.id} variants={itemVariants}>
@@ -132,10 +144,13 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                           }
                         >
                           <div className={`flex items-center ${isExpanded ? 'gap-3' : 'justify-center w-full'}`}>
-                            <div 
-                              className="w-2 h-2 rounded-full shrink-0" 
-                              style={{ backgroundColor: skill?.colorAccent || '#8c937e' }}
-                            ></div>
+                            {channel.channelType === 'voice' ? (
+                              <span className="material-symbols-outlined text-[18px] text-primary-fixed">volume_up</span>
+                            ) : channel.channelType === 'forum' ? (
+                              <span className="material-symbols-outlined text-[18px] text-primary-fixed">forum</span>
+                            ) : (
+                              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: skill?.colorAccent || '#8c937e' }} />
+                            )}
                             {isExpanded && <span className="truncate max-w-[120px]">{channel.name}</span>}
                           </div>
                           {isExpanded && channel.unreadCount > 0 && (
@@ -146,7 +161,9 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                         </NavLink>
                       </motion.div>
                     );
-                  })
+                      })}
+                    </div>
+                  ))
                 )}
               </div>
             </div>
@@ -158,6 +175,24 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                 </h3>
               )}
               <div className="space-y-1">
+                <motion.div variants={itemVariants}>
+                  <NavLink
+                    to="/dashboard/messages"
+                    className={({ isActive }) =>
+                      `group flex items-center justify-between py-2 rounded-lg transition-all duration-300 ${
+                        isActive
+                          ? 'bg-surface-variant text-on-surface ring-1 ring-white/[0.08]'
+                          : 'text-on-surface-variant hover:bg-surface-variant'
+                      } ${isExpanded ? 'px-4' : 'px-0 justify-center'}`
+                    }
+                  >
+                    <div className={`flex items-center ${isExpanded ? 'gap-3' : 'justify-center w-full'}`}>
+                      <span className="material-symbols-outlined text-[20px]">chat</span>
+                      {isExpanded && <span className="truncate max-w-[120px]">Messages</span>}
+                    </div>
+                  </NavLink>
+                </motion.div>
+
                 <motion.div variants={itemVariants}>
                   <NavLink
                     to="/dashboard/matchmaking"
@@ -194,7 +229,10 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                   </NavLink>
                 </motion.div>
 
-                {suggestedChannels.map(channel => {
+                {groupChannels(suggestedChannels).map(([category, categoryChannels]) => (
+                  <div key={`suggested-${category}`}>
+                    {isExpanded && <p className="px-4 pt-3 pb-1 text-[10px] font-mono-sm uppercase tracking-wider text-on-surface-variant/70">{category}</p>}
+                    {categoryChannels.map(channel => {
                   const skill = skills?.find(s => s.id === channel.skillId);
                   return (
                     <motion.div key={channel.id} variants={itemVariants}>
@@ -212,15 +250,17 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                           <span 
                             className="material-symbols-outlined text-[20px]"
                             style={{ color: skill?.colorAccent || '#8c937e' }}
-                          >
-                            tag
+                            >
+                            {channel.channelType === 'voice' ? 'volume_up' : channel.channelType === 'forum' ? 'forum' : 'tag'}
                           </span>
                           {isExpanded && <span className="truncate max-w-[120px]">{channel.name}</span>}
                         </div>
                       </NavLink>
                     </motion.div>
                   );
-                })}
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
             

@@ -81,6 +81,7 @@ export const api = {
     const qs = query.toString();
     return fetcher(`/teams${qs ? `?${qs}` : ''}`);
   },
+  getTeamRecommendations: () => fetcher('/teams/recommendations'),
   createTeam: (data) => fetcher('/teams', { method: 'POST', body: JSON.stringify(data) }),
   createTeamPost: (data) => fetcher('/teams', { method: 'POST', body: JSON.stringify(data) }),
   requestToJoinTeam: (teamId) => fetcher(`/teams/${teamId}/join`, { method: 'POST' }),
@@ -123,10 +124,35 @@ export const api = {
 
   // Channels
   getChannels: () => fetcher('/channels'),
+  getChannel: (channelId) => fetcher(`/channels/${channelId}`),
+  joinChannel: (channelId) => fetcher(`/channels/${channelId}/join`, { method: 'POST' }),
+  leaveChannel: (channelId) => fetcher(`/channels/${channelId}/membership`, { method: 'DELETE' }),
+  inviteToChannel: (channelId, email) => fetcher(`/channels/${channelId}/invitations`, {
+    method: 'POST', body: JSON.stringify({ email })
+  }),
   createChannel: (channelData) => createChannel(channelData),
   sendChannelMessage: (data) => fetcher(`/channels/${data.channelId}/messages`, { method: 'POST', body: JSON.stringify(data) }),
   getMessages: (channelId) => fetcher(`/channels/${channelId}/messages`),
   sendMessage: (channelId, data) => fetcher(`/channels/${channelId}/messages`, { method: 'POST', body: JSON.stringify(data) }),
+  getPinnedMessages: (channelId) => fetcher(`/channels/${channelId}/pins`),
+  toggleMessagePin: (channelId, messageId) => fetcher(`/channels/${channelId}/messages/${messageId}/pin`, { method: 'POST' }),
+  toggleMessageReaction: (channelId, messageId, emoji) => fetcher(`/channels/${channelId}/messages/${messageId}/reactions`, { method: 'POST', body: JSON.stringify({ emoji }) }),
+  getMessageReplies: (channelId, messageId) => fetcher(`/channels/${channelId}/messages/${messageId}/replies`),
+  sendMessageReply: (channelId, messageId, text) => fetcher(`/channels/${channelId}/messages/${messageId}/replies`, { method: 'POST', body: JSON.stringify({ text }) }),
+  getForumPosts: (channelId) => fetcher(`/channels/${channelId}/forum`),
+  createForumPost: (channelId, data) => fetcher(`/channels/${channelId}/forum`, { method: 'POST', body: JSON.stringify(data) }),
+  replyToForumPost: (channelId, postId, text) => fetcher(`/channels/${channelId}/forum/${postId}/replies`, { method: 'POST', body: JSON.stringify({ text }) }),
+  getCommunityEvents: (channelId) => fetcher(`/channels/${channelId}/events`),
+  createCommunityEvent: (channelId, data) => fetcher(`/channels/${channelId}/events`, { method: 'POST', body: JSON.stringify(data) }),
+  rsvpCommunityEvent: (channelId, eventId) => fetcher(`/channels/${channelId}/events/${eventId}/rsvp`, { method: 'POST' }),
+
+  // Direct and group conversations
+  getConversations: () => fetcher('/conversations'),
+  createConversation: (data) => fetcher('/conversations', { method: 'POST', body: JSON.stringify(data) }),
+  getConversationMessages: (conversationId) => fetcher(`/conversations/${conversationId}/messages`),
+  sendConversationMessage: (conversationId, text) => fetcher(`/conversations/${conversationId}/messages`, {
+    method: 'POST', body: JSON.stringify({ text })
+  }),
 
   // Notifications
   getNotifications: () => fetcher('/notifications'),

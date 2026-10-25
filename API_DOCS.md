@@ -15,7 +15,7 @@ This file covers all the backend API routes for Skill-Nexus. The server runs on 
 ## Auth
 
 ### `POST /auth/register`
-Creates a new account.
+Creates an account and starts email verification. The response contains `requireOtp: true`; the user must verify the six-digit code before they can log in. In development only, if SMTP is unavailable, the response message includes a development OTP. Production responses never include the code.
 
 ```json
 // send this
@@ -29,9 +29,9 @@ Creates a new account.
 
 // you get back
 {
-  "message": "Registration successful",
-  "token": "eyJhbGci...",
-  "user": { "id": "...", "name": "Sreeraj", "email": "...", "isMentor": false }
+  "message": "Registration initiated...",
+  "requireOtp": true,
+  "email": "sreeraj@example.com"
 }
 ```
 
@@ -40,6 +40,13 @@ Creates a new account.
 | 400 | Name, email, or password is missing |
 | 409 | Someone already registered with that email |
 | 500 | Something broke on the server |
+| 503 | Production email delivery is not configured or failed |
+
+### `POST /auth/verify-otp`
+Activates the account and returns an auth token. Send `{ "email": "...", "otp": "123456" }`. Codes expire after 10 minutes.
+
+### `POST /auth/resend-otp`
+Send `{ "email": "..." }` to generate a fresh code. Only the newest code is valid.
 
 ---
 
@@ -58,6 +65,8 @@ Log in and get your token.
 |---|---|
 | 400 | Email or password missing |
 | 401 | Wrong credentials |
+| 403 | Account is not verified; a fresh OTP is required |
+| 503 | Production email delivery failed |
 
 ---
 
@@ -296,14 +305,100 @@ Answer someone else's question.
 
 ---
 
+## Direct and Group Conversations
+
+All conversation endpoints require a login. Private conversations are visible only to their members.
+
+### `GET /conversations`
+List your direct and group conversations, newest activity first.
+
+### `POST /conversations` 🔒
+Start or open a direct conversation with one email, or create a group conversation with multiple emails. A group may contain up to eight members including you. A direct conversation is reused if it already exists.
+
+```json
+{ "emails": ["student@example.edu"], "name": "Optional group name" }
+```
+
+### `GET /conversations/:id/messages` 🔒
+Load the most recent 100 messages for a conversation.
+
+### `POST /conversations/:id/messages` 🔒
+Send a text message (up to 4,000 characters).
+
+```json
+{ "text": "Are you free to review the project?" }
+```
+
+Audio and video calls use authenticated Socket.IO signaling and WebRTC media streams. Calls support up to eight participants.
+
+---
+
 ## Channels
 
 ### `GET /channels`
-All skill-based chat channels on the platform.
+Requires a login. Returns public channels, channels you belong to, and private channels you have been invited to. Private channel details and member lists are limited to members and the owner.
 
 ```json
-[{ "id": "...", "name": "#python-help", "memberCount": 124, "unreadCount": 0 }]
+[{ "id": "...", "name": "#python-help", "channelType": "text", "memberCount": 12, "isPrivate": false, "isMember": true, "members": [{ "id": "...", "name": "Alex" }] }]
 ```
+
+Channels may be created with `channelType: "text"`, `"forum"`, or `"voice"`; omitted values default to `text`. Set `category` to group channels in the sidebar (defaults to `General`). Forum channels provide posts and replies; community members can schedule events and RSVP. Voice media and screen sharing use WebRTC, with Socket.IO signaling restricted to channel members.
+
+Text channel messages support member reactions and threaded replies. Channel owners can pin messages.
+
+### `GET /channels/:id/pins` 🔒
+List pinned messages. Requires channel membership.
+
+### `POST /channels/:id/messages/:messageId/pin` 🔒
+Toggle a message pin. Channel owner only.
+
+### `POST /channels/:id/messages/:messageId/reactions` 🔒
+Toggle one of `👍`, `❤️`, `😂`, `😮`, `🎉`, `✅`, or `🔥` with `{ "emoji": "👍" }`.
+
+### `GET /channels/:id/messages/:messageId/replies` 🔒
+List replies in a message thread.
+
+### `POST /channels/:id/messages/:messageId/replies` 🔒
+Add a threaded reply with `{ "text": "..." }`.
+
+### `GET /channels/:id/forum` 🔒
+List up to 100 forum posts and replies. The requester must be a channel member.
+
+### `POST /channels/:id/forum` 🔒
+Create a forum post with `{ "title": "...", "body": "..." }`.
+
+### `POST /channels/:id/forum/:postId/replies` 🔒
+Add a reply with `{ "text": "..." }`.
+
+### `GET /channels/:id/events` 🔒
+List upcoming scheduled community events.
+
+### `POST /channels/:id/events` 🔒
+Schedule an event with `{ "title": "...", "startsAt": "ISO-8601", "description": "...", "location": "..." }`. The creator is automatically RSVP'd.
+
+### `POST /channels/:id/events/:eventId/rsvp` 🔒
+Toggle the signed-in member's RSVP for an event.
+
+---
+
+### `GET /channels/:id`
+Get channel details and its member list. Private channels return `403` unless you are a member or the owner.
+
+### `POST /channels/:id/join` 🔒
+Join a public channel. Private channels can be joined only after an owner invites your registered email.
+
+### `DELETE /channels/:id/membership` 🔒
+Leave a channel. The owner cannot leave their own channel.
+
+### `POST /channels/:id/invitations` 🔒
+Owner-only. Invite an existing account by email to a private channel. The invitee receives a notification and can accept or decline it there.
+
+```json
+{ "email": "student@example.edu" }
+```
+
+### `GET /channels/:id/files/:filename` 🔒
+Download an attachment after the API confirms you belong to the channel.
 
 ---
 

@@ -33,6 +33,9 @@ const formatUser = (user) => ({
     stats: user.stats || { queriesResolved: 0, teamsAdvised: 0, sessionsLed: 0 },
     projects: user.projects || []
 });
+const otpDeliveryMessage = (delivery, sentMessage) => delivery.devOtp
+    ? `Email is not configured for this development server. Use this development-only code: ${delivery.devOtp}`
+    : sentMessage;
 
 // REGISTER: POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -65,14 +68,15 @@ router.post('/register', async (req, res) => {
             if (batch) existingUser.batch = batch;
             await existingUser.save();
 
+            let delivery;
             try {
-                await sendOtpEmail({ to: normalizedEmail, otp, name: existingUser.name });
+                delivery = await sendOtpEmail({ to: normalizedEmail, otp, name: existingUser.name });
             } catch (mailError) {
-                console.error('Failed to send verification email:', mailError.message);
+                return res.status(503).json({ message: mailError.message, requireOtp: true, email: normalizedEmail });
             }
 
             return res.status(200).json({
-                message: 'Account pending verification. A fresh verification code has been sent to your email.',
+                message: otpDeliveryMessage(delivery, 'Account pending verification. A fresh verification code has been sent to your email.'),
                 requireOtp: true,
                 email: normalizedEmail
             });
@@ -95,15 +99,15 @@ router.post('/register', async (req, res) => {
             otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000)
         });
 
-        // Dispatch real email via Gmail SMTP
+        let delivery;
         try {
-            await sendOtpEmail({ to: normalizedEmail, otp, name: user.name });
+            delivery = await sendOtpEmail({ to: normalizedEmail, otp, name: user.name });
         } catch (mailError) {
-            console.error('Failed to send verification email:', mailError.message);
+            return res.status(503).json({ message: mailError.message, requireOtp: true, email: normalizedEmail });
         }
 
         return res.status(201).json({
-            message: 'Registration initiated. Please enter the 6-digit verification code sent to your email.',
+            message: otpDeliveryMessage(delivery, 'Registration initiated. Please enter the 6-digit verification code sent to your email.'),
             requireOtp: true,
             email: normalizedEmail
         });
@@ -198,16 +202,16 @@ router.post('/resend-otp', async (req, res) => {
         user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
         await user.save();
 
-        await sendOtpEmail({ to: normalizedEmail, otp: newOtp, name: user.name });
+        const delivery = await sendOtpEmail({ to: normalizedEmail, otp: newOtp, name: user.name });
 
         return res.json({
-            message: 'A fresh verification code has been sent to your email.'
+            message: otpDeliveryMessage(delivery, 'A fresh verification code has been sent to your email.')
         });
 
     } catch (error) {
         console.error('Resend OTP error:', error);
-        return res.status(500).json({
-            message: 'Failed to resend verification code',
+        return res.status(503).json({
+            message: error.message || 'Failed to resend verification code',
             error: error.message
         });
     }
@@ -248,14 +252,15 @@ router.post('/login', async (req, res) => {
             user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
             await user.save();
 
+            let delivery;
             try {
-                await sendOtpEmail({ to: normalizedEmail, otp: newOtp, name: user.name });
+                delivery = await sendOtpEmail({ to: normalizedEmail, otp: newOtp, name: user.name });
             } catch (mailError) {
-                console.error('Failed to send verification email:', mailError.message);
+                return res.status(503).json({ message: mailError.message, requireOtp: true, email: normalizedEmail });
             }
 
             return res.status(403).json({
-                message: 'Please verify your email before logging in. A new verification code has been sent to your email.',
+                message: `Please verify your email before logging in. ${otpDeliveryMessage(delivery, 'A new verification code has been sent to your email.')}`,
                 requireOtp: true,
                 email: normalizedEmail
             });

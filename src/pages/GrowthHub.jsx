@@ -5,6 +5,7 @@ import OpportunityCard from '../components/OpportunityCard';
 import MentorCard from '../components/MentorCard';
 import PostOpportunityModal from '../components/PostOpportunityModal';
 import RequestMentorshipModal from '../components/RequestMentorshipModal';
+import CommunityQA from '../components/CommunityQA';
 
 const OPPORTUNITY_CATEGORIES = [
   { id: 'all', label: 'All Opportunities' },
@@ -246,10 +247,21 @@ export default function GrowthHub() {
             />
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab('questions')}
+          className={`pb-3 text-sm font-button-text relative transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === 'questions' ? 'text-primary font-semibold' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">forum</span>
+          <span>Q&amp;A</span>
+          {activeTab === 'questions' && <motion.div layoutId="growthTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
+        </button>
       </div>
 
       {/* Controls Bar: Search & Quick Filters */}
-      <div className="flex flex-col gap-4 mb-8">
+      {activeTab !== 'questions' && <div className="flex flex-col gap-4 mb-8">
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">
@@ -315,11 +327,13 @@ export default function GrowthHub() {
             })}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Main Content Area */}
       <div className="min-h-[400px]">
-        {isLoading ? (
+        {activeTab === 'questions' ? (
+          <CommunityQA />
+        ) : isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div

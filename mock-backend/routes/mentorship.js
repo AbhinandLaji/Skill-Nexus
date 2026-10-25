@@ -4,29 +4,6 @@ const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
-const DEFAULT_QUESTIONS = [
-    {
-        question: 'How do you optimize large SQL queries with multiple JOINs?',
-        askedByName: 'alex_dev',
-        skillTags: ['Database', 'PostgreSQL'],
-        answerCount: 1,
-        answers: [
-            {
-                text: 'Make sure your foreign keys and join condition columns have indexes. Check EXPLAIN ANALYZE for sequential scans.',
-                answeredByName: 'Sarah Jenkins',
-                isMentor: true
-            }
-        ]
-    },
-    {
-        question: 'What is the best way to handle global state in modern React 19?',
-        askedByName: 'sarah_data',
-        skillTags: ['React', 'Frontend'],
-        answerCount: 0,
-        answers: []
-    }
-];
-
 const formatQuestion = (q) => ({
     id: q._id ? q._id.toString() : q.id,
     _id: q._id ? q._id.toString() : q.id,
@@ -49,15 +26,10 @@ const formatQuestion = (q) => ({
 // GET /api/mentorship/questions
 router.get('/questions', async (req, res) => {
     try {
-        let questions = await Question.find().sort({ createdAt: -1 });
-
-        if (!questions || questions.length === 0) {
-            questions = await Question.insertMany(DEFAULT_QUESTIONS);
-        }
-
+        const questions = await Question.find().sort({ createdAt: -1 });
         return res.json(questions.map(formatQuestion));
     } catch (error) {
-        return res.json(DEFAULT_QUESTIONS.map((q, idx) => ({ ...q, id: (idx + 1).toString() })));
+        return res.status(500).json({ message: 'Failed to load questions' });
     }
 });
 

@@ -11,6 +11,12 @@ const channelSchema = new mongoose.Schema(
             type: String,
             default: 'squad'
         },
+        channelType: {
+            type: String,
+            enum: ['text', 'voice', 'forum'],
+            default: 'text'
+        },
+        category: { type: String, trim: true, maxlength: 50, default: 'General' },
         description: {
             type: String,
             default: ''
@@ -26,6 +32,12 @@ const channelSchema = new mongoose.Schema(
                 ref: 'User'
             }
         ],
+        invitations: [{
+            email: { type: String, required: true, lowercase: true, trim: true },
+            invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+            status: { type: String, enum: ['pending', 'accepted', 'declined'], default: 'pending' },
+            createdAt: { type: Date, default: Date.now }
+        }],
         teamId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Team',

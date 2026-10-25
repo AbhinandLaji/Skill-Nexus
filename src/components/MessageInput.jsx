@@ -4,6 +4,7 @@ import { api } from '../services/api';
 export default function MessageInput({ channelId, onMessageSent }) {
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isCodeMode, setIsCodeMode] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('python');
@@ -40,6 +41,7 @@ export default function MessageInput({ channelId, onMessageSent }) {
 
     if (!hasText && !hasFile && !hasCode) return;
 
+    setSendError('');
     setIsSending(true);
 
     try {
@@ -60,24 +62,13 @@ export default function MessageInput({ channelId, onMessageSent }) {
       let attachmentPayload = null;
       if (hasFile) {
         messageType = 'file';
-        try {
-          // Upload the real file to Express via Multer
-          const uploadRes = await api.uploadAttachment(selectedFile);
-          attachmentPayload = {
-            fileUrl: uploadRes.fileUrl,
-            fileName: uploadRes.fileName,
-            fileSize: uploadRes.fileSize,
-            fileType: uploadRes.fileType
-          };
-        } catch (uploadErr) {
-          console.error('File upload failed, falling back to metadata:', uploadErr);
-          attachmentPayload = {
-            fileUrl: null,
-            fileName: selectedFile.name,
-            fileSize: formatFileSize(selectedFile.size),
-            fileType: selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE'
-          };
-        }
+        const uploadRes = await api.uploadAttachment(selectedFile);
+        attachmentPayload = {
+          fileUrl: uploadRes.fileUrl,
+          fileName: uploadRes.fileName,
+          fileSize: uploadRes.fileSize,
+          fileType: uploadRes.fileType
+        };
         payload = attachmentPayload;
       }
 
@@ -94,23 +85,20 @@ export default function MessageInput({ channelId, onMessageSent }) {
         threadCount: 0
       };
 
-      // Call API if channelId is available
+      // REST saves the message; the server broadcasts its persisted form to
+      // everyone in the channel over Socket.IO (including this client).
       if (channelId) {
-        try {
-          await api.sendChannelMessage({
-            channelId,
-            text: newMsg.text,
-            type: messageType,
-            codeSnippet: hasCode ? { language: selectedLanguage, code: codeContent.trim() } : null,
-            attachment: attachmentPayload
-          });
-        } catch (apiErr) {
-          console.warn('Backend message sync error (optimistic update used):', apiErr.message);
-        }
+        const response = await api.sendChannelMessage({
+          channelId,
+          text: newMsg.text,
+          type: messageType,
+          codeSnippet: hasCode ? { language: selectedLanguage, code: codeContent.trim() } : null,
+          attachment: attachmentPayload
+        });
+        onMessageSent(response.message || response);
+      } else {
+        onMessageSent(newMsg);
       }
-
-      // Update parent ChatArea state
-      onMessageSent(newMsg);
 
       // Reset all form states
       setContent('');
@@ -126,6 +114,7 @@ export default function MessageInput({ channelId, onMessageSent }) {
       }
     } catch (err) {
       console.error('Failed to send message:', err);
+      setSendError(err.message || 'Could not send the message. Please try again.');
     } finally {
       setIsSending(false);
     }
@@ -187,6 +176,10 @@ export default function MessageInput({ channelId, onMessageSent }) {
               <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
           </div>
+        )}
+
+        {sendError && (
+          <p role="alert" className="mx-3 mt-2 text-xs text-error">{sendError}</p>
         )}
 
         {/* Code Snippet Editor Mode */}

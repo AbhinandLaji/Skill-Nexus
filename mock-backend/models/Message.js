@@ -37,7 +37,14 @@ const messageSchema = new mongoose.Schema(
         threadCount: {
             type: Number,
             default: 0
-        }
+        },
+        parentMessageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null, index: true },
+        reactions: [{
+            emoji: { type: String, required: true },
+            users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+        }],
+        isPinned: { type: Boolean, default: false, index: true },
+        pinnedAt: { type: Date, default: null }
     },
     {
         timestamps: true,
