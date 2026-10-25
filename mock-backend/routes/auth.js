@@ -47,6 +47,12 @@ router.post('/register', async (req, res) => {
         }
 
         const normalizedEmail = email.toLowerCase().trim();
+        if (!normalizedEmail.endsWith('@tkmce.ac.in')) {
+            return res.status(400).json({
+                message: 'Registration is restricted to valid @tkmce.ac.in college email addresses.',
+                error: 'Invalid email domain'
+            });
+        }
         const existingUser = await User.findOne({ email: normalizedEmail });
 
         if (existingUser) {
@@ -227,6 +233,12 @@ router.post('/login', async (req, res) => {
         }
 
         const normalizedEmail = email.toLowerCase().trim();
+        if (!normalizedEmail.endsWith('@tkmce.ac.in')) {
+            return res.status(400).json({
+                message: 'Access is restricted to valid @tkmce.ac.in college email addresses.',
+                error: 'Invalid email domain'
+            });
+        }
         const user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {

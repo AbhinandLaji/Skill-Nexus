@@ -76,7 +76,7 @@ export default function DashboardHome() {
           <div className="flex flex-col gap-2 mb-2">
             <div className="flex items-center gap-3">
               <span className="font-mono-sm text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-sm border border-primary/20 backdrop-blur-sm">
-                System.out.println("Hello");
+                console.log("Hello");
               </span>
               <div className="h-[1px] flex-1 bg-gradient-to-r from-outline-variant/40 to-transparent"></div>
             </div>

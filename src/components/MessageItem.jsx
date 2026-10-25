@@ -78,7 +78,8 @@ export default function MessageItem({ message, channelId, canPin, onOpenThread, 
                   {fileSize ? `${fileSize} • ` : ''}{fileType}
                 </span>
               </div>
-              <span className="material-symbols-outlined text-on-surface-variant group-hover/file:text-on-surface">download</span>
+              {/* Download icon kept in code but hidden per requirement 10 */}
+              {/* <span className="material-symbols-outlined text-on-surface-variant group-hover/file:text-on-surface">download</span> */}
             </button>
           );
         })()}

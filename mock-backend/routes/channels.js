@@ -399,9 +399,15 @@ router.post('/:id/messages', protect, async (req, res) => {
 
         const formatted = formatMessage(message, req.user._id);
 
-        // REST remains the durable write path; Socket.IO delivers the saved
-        // message to every authenticated member currently viewing this channel.
-        req.app.get('io')?.to(`channel:${id}`).emit('channel:message', formatted);
+        // Emit message:new with the saved message object to the channel room
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`channel:${id}`).emit('message:new', formatted);
+            if (channel._id && channel._id.toString() !== id) {
+                io.to(`channel:${channel._id}`).emit('message:new', formatted);
+            }
+            io.to(`channel:${id}`).emit('channel:message', formatted);
+        }
 
         return res.status(201).json({
             message: formatted,

@@ -17,27 +17,22 @@ const itemVariants = {
 
 export default function PortfolioGrid({ projects }) {
   const navigate = useNavigate();
-  // If no projects provided, fallback to the hardcoded ones from the design
-  const displayProjects = projects && projects.length > 0 ? projects : [
-    {
-      id: 1,
-      title: 'Project Nebula',
-      role: 'Lead',
-      description: 'Distributed training orchestrator for LLMs on heterogeneous edge devices. Implementing consensus protocols in Rust.',
-      status: 'ACTV_BUILD_PHASE',
-      statusColor: 'primary',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBFdLH-Lrc7W_mWR6tgRhp6cUIfF71-63lEviEjFnZMioivrAymSPJnYlNAjHbHyindCgFa8UF4mU-aKtBrjxuw-o1MBYaRDNiUvXa9Zuv4-4Np7hUO5ktgAleylzlihw-mHYewgw7ssIymxE7LVP-GNBMmHBYgiZu4waXZnB6SsdZE5R-4IimIGx9D_XzXMxh6nQhcE492ci624VwVJWEK0U4--GtnvzM4fg5k8AKmxzzbAheypB60hn2DwdT5kNY5Clkd1YpQWbfj'
-    },
-    {
-      id: 2,
-      title: 'Cyber Sec CTF Prep',
-      role: 'Contributor',
-      description: 'Weekly deep dives into binary exploitation and reverse engineering. Preparing for DEF CON qualifiers.',
-      status: 'WEEKLY_SYNC_SCHEDULED',
-      statusColor: 'secondary',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnyntXNs4yZdDKrs15fuYxf0UIbsYdIze9dORKZEla4gUjzAOYHXBtyHYZETvwBPKPnmVgFszImfqucfAKTpwd-2nzULmXfbZazMspKQFtw5BIavV2DLCw2EoH3_dGXjPTSBbPEO6g2IxRLRUoqaILDU-Q9PhfIcC05MeCuzBxtURKruWCPhKLbb-cJxoBSNaRUu-X7MSCek0cZ9trevyeNJ02LJCTbMbTZLUgov4Me9WHu9YqKwSNA4k2JyfKXzouyl0u-c4zXomn'
-    }
-  ];
+
+  if (!projects || projects.length === 0) {
+    return (
+      <div className="col-span-12 lg:col-span-8">
+        <div className="flex items-center justify-between mb-[24px]">
+          <h2 className="font-headline-lg text-headline-lg text-on-background">Active Squads</h2>
+        </div>
+        <div className="bg-surface-container rounded-xl p-8 border border-white/[0.08] text-center flex flex-col items-center justify-center min-h-[220px]">
+          <span className="material-symbols-outlined text-4xl mb-2 text-on-surface-variant/40">groups</span>
+          <p className="font-body-md text-sm text-on-surface-variant">No active squads yet</p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayProjects = projects;
 
   return (
     <div className="col-span-12 lg:col-span-8">
@@ -89,11 +84,26 @@ export default function PortfolioGrid({ projects }) {
                   {description}
                 </p>
                 <div className="flex items-center justify-between mt-auto">
-                  <div className="flex -space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-surface-variant border-2 border-surface-container flex items-center justify-center text-xs font-mono-sm text-on-surface">JD</div>
-                    <div className="w-8 h-8 rounded-full bg-surface-variant border-2 border-surface-container flex items-center justify-center text-xs font-mono-sm text-on-surface">MK</div>
-                    <div className="w-8 h-8 rounded-full bg-surface-variant border-2 border-surface-container flex items-center justify-center text-xs font-mono-sm text-on-surface">+2</div>
-                  </div>
+                  {Array.isArray(project.members) && project.members.length > 0 ? (
+                    <div className="flex -space-x-2">
+                      {project.members.slice(0, 3).map((m, idx) => {
+                        const name = typeof m === 'string' ? m : (m?.name || m?.authorName || '?');
+                        const avatar = typeof m === 'object' ? m?.avatar : null;
+                        return avatar ? (
+                          <img key={idx} src={avatar} alt={name} className="w-7 h-7 rounded-full border-2 border-surface-container object-cover" />
+                        ) : (
+                          <div key={idx} className="w-7 h-7 rounded-full bg-surface-variant border-2 border-surface-container flex items-center justify-center text-[10px] font-mono-sm text-on-surface">
+                            {name.charAt(0).toUpperCase()}
+                          </div>
+                        );
+                      })}
+                      {project.members.length > 3 && (
+                        <div className="w-7 h-7 rounded-full bg-surface-variant border-2 border-surface-container flex items-center justify-center text-[10px] font-mono-sm text-on-surface">
+                          +{project.members.length - 3}
+                        </div>
+                      )}
+                    </div>
+                  ) : <div />}
                   <div className="flex items-center gap-3">
                     {project.channelId && (
                       <span className="flex items-center gap-1 font-mono-sm text-xs text-primary group-hover:underline">

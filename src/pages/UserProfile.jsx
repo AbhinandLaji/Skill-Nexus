@@ -6,6 +6,7 @@ import ProfileHeader from '../components/ProfileHeader';
 import ReputationBoard from '../components/ReputationBoard';
 import PortfolioGrid from '../components/PortfolioGrid';
 import EditProfileModal from '../components/EditProfileModal';
+import { disconnectSocket } from '../services/socket';
 
 export default function UserProfile() {
   const { user: currentUser, skills: allSkills = [] } = useOutletContext();
@@ -13,39 +14,25 @@ export default function UserProfile() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    disconnectSocket();
     localStorage.removeItem('auth_token');
     navigate('/auth');
   };
   
   const [mockUserProfile, setMockUserProfile] = useState({
-    name: currentUser?.name || 'Alex Chen',
-    email: currentUser?.email || 'alex.c@tkmce.ac.in',
+    name: currentUser?.name || 'User',
+    email: currentUser?.email || '',
     avatar: currentUser?.avatar || null,
     batch: currentUser?.batch || null,
-    isMentor: true,
-    skills: ["Python", "MERN Stack", "AWS", "UI/UX"],
+    isMentor: currentUser?.isMentor || false,
+    skills: currentUser?.skills || [],
     stats: {
-      queriesResolved: 342,
-      teamsAdvised: 14,
-      sessionsLed: 28
+      queriesResolved: 0,
+      teamsAdvised: 0,
+      sessionsLed: 0
     },
-    bio: 'Building scalable ML pipelines and mentoring junior devs in systems architecture. Currently obsessed with Rust optimization and edge computing. Always down to debug weird memory leaks over coffee.',
-    projects: [
-      {
-        id: '1',
-        title: 'Nexus AI Swarm Platform',
-        description: 'Multi-agent system for automated code verification and syntax testing.',
-        role: 'Lead Architect',
-        status: 'Active'
-      },
-      {
-        id: '2',
-        title: 'ZK Campus Voting Protocol',
-        description: 'Decentralized cryptographic voting engine deployed for collegiate council elections.',
-        role: 'Core Contributor',
-        status: 'Completed'
-      }
-    ]
+    bio: currentUser?.bio || 'No bio yet. Click Edit Profile to add one.',
+    projects: []
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -103,15 +90,19 @@ export default function UserProfile() {
           setMockUserProfile(prev => ({
             ...prev,
             ...data,
+            name: data.name || prev.name,
+            email: data.email || prev.email,
+            avatar: data.avatar || prev.avatar,
             batch: data.batch || prev.batch,
-            skills: resolvedSkills.length > 0 ? resolvedSkills : prev.skills,
-            projects: activeSquadProjects.length > 0 ? activeSquadProjects : (data.projects && data.projects.length > 0 ? data.projects : prev.projects),
+            isMentor: Boolean(data.isMentor),
+            skills: resolvedSkills,
+            projects: activeSquadProjects.length > 0 ? activeSquadProjects : (data.projects && data.projects.length > 0 ? data.projects : []),
             stats: {
-              queriesResolved: data.stats?.queriesResolved ?? prev.stats.queriesResolved,
-              teamsAdvised: data.stats?.teamsAdvised ?? prev.stats.teamsAdvised,
-              sessionsLed: data.stats?.sessionsLed ?? prev.stats.sessionsLed
+              queriesResolved: data.stats?.queriesResolved ?? 0,
+              teamsAdvised: data.stats?.teamsAdvised ?? 0,
+              sessionsLed: data.stats?.sessionsLed ?? 0
             },
-            bio: data.bio || prev.bio
+            bio: data.bio || 'No bio yet. Click Edit Profile to add one.'
           }));
         }
       } catch (err) {

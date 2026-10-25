@@ -49,13 +49,13 @@ io.use(async (socket, next) => {
         if (token === 'mock-jwt-token') {
             user = await User.findOne().select('-password');
         } else {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
             user = await User.findById(decoded.id).select('-password');
         }
 
         if (!user) return next(new Error('Not authorized, user not found'));
         socket.user = user;
-        socket.data.user = { id: user._id.toString(), name: user.name, avatar: user.avatar || null };
+        socket.data.user = user;
         next();
     } catch (error) {
         next(new Error('Not authorized, token failed'));
@@ -63,23 +63,33 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (socket) => {
-    socket.on('channel:join', async (channelId, acknowledge = () => {}) => {
+    socket.on('channel:join', async (channelId, acknowledge) => {
         try {
-            const channel = await Channel.findById(channelId).select('_id admin members isPrivate');
-            if (!channel) return acknowledge({ ok: false, error: 'Channel not found' });
-            const isMember = channel.admin?.toString() === socket.user._id.toString() ||
-                channel.members.some((memberId) => memberId.toString() === socket.user._id.toString());
-            if (!isMember) return acknowledge({ ok: false, error: 'Join this channel before subscribing.' });
+            if (!channelId) return;
+            let channel = null;
+            if (mongoose.isValidObjectId(channelId)) {
+                channel = await Channel.findById(channelId).select('_id admin members isPrivate');
+            } else {
+                channel = await Channel.findOne({ name: channelId }).select('_id admin members isPrivate');
+            }
+            if (!channel) return;
+            const currentUserId = (socket.data?.user?._id || socket.user?._id || '').toString();
+            const isMember = (channel.admin && channel.admin.toString() === currentUserId) ||
+                (channel.members && channel.members.some((memberId) => memberId.toString() === currentUserId));
+            if (!isMember) return; // Ignore silently if not a member
 
-            await socket.join(`channel:${channel._id}`);
-            acknowledge({ ok: true });
+            await socket.join(`channel:${channelId}`);
+            if (channel._id.toString() !== String(channelId)) {
+                await socket.join(`channel:${channel._id}`);
+            }
+            if (typeof acknowledge === 'function') acknowledge({ ok: true });
         } catch (error) {
-            acknowledge({ ok: false, error: 'Unable to join channel' });
+            // Ignore silently if not a member or invalid
         }
     });
 
     socket.on('channel:leave', (channelId) => {
-        if (typeof channelId === 'string') socket.leave(`channel:${channelId}`);
+        if (channelId) socket.leave(`channel:${channelId}`);
     });
 
     socket.data.voiceRooms = new Set();

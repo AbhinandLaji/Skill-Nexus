@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 import OpportunityCard from '../components/OpportunityCard';
 import MentorCard from '../components/MentorCard';
 import PostOpportunityModal from '../components/PostOpportunityModal';
 import RequestMentorshipModal from '../components/RequestMentorshipModal';
-import CommunityQA from '../components/CommunityQA';
+import QuestionCard from '../components/QuestionCard';
+import AskQuestionModal from '../components/AskQuestionModal';
 
 const OPPORTUNITY_CATEGORIES = [
   { id: 'all', label: 'All Opportunities' },
@@ -27,20 +29,27 @@ const MENTOR_TRACKS = [
 ];
 
 export default function GrowthHub() {
-  const [activeTab, setActiveTab] = useState('opportunities'); // 'opportunities' | 'mentors'
+  const { skills: contextSkills = [] } = useOutletContext() || {};
+  const [activeTab, setActiveTab] = useState('opportunities'); // 'opportunities' | 'mentors' | 'discussions'
 
   // Data state
   const [opportunities, setOpportunities] = useState([]);
   const [mentors, setMentors] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [skillsList, setSkillsList] = useState(Array.isArray(contextSkills) ? contextSkills : []);
   const [isLoading, setIsLoading] = useState(true);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionsError, setQuestionsError] = useState(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedTrack, setSelectedTrack] = useState('All Tracks');
+  const [selectedSkillFilter, setSelectedSkillFilter] = useState('All');
 
   // Modals state
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [selectedMentorForRequest, setSelectedMentorForRequest] = useState(null);
   const [requestedMentorIds, setRequestedMentorIds] = useState(new Set());
   const [toastMessage, setToastMessage] = useState(null);
@@ -55,15 +64,35 @@ export default function GrowthHub() {
     }
   });
 
+  const fetchQuestions = async () => {
+    try {
+      setQuestionsLoading(true);
+      setQuestionsError(null);
+      const data = await api.getQuestions();
+      setQuestions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch questions:', err);
+      setQuestionsError(err.message || 'Failed to load discussions.');
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [oppsData, mentorsData] = await Promise.all([
+      const [oppsData, mentorsData, questionsData, skillsData] = await Promise.all([
         api.getOpportunities().catch(() => []),
-        api.getMentors().catch(() => [])
+        api.getMentors().catch(() => []),
+        api.getQuestions().catch(() => []),
+        api.getSkills().catch(() => [])
       ]);
       setOpportunities(Array.isArray(oppsData) ? oppsData : []);
       setMentors(Array.isArray(mentorsData) ? mentorsData : []);
+      setQuestions(Array.isArray(questionsData) ? questionsData : []);
+      if (Array.isArray(skillsData) && skillsData.length > 0) {
+        setSkillsList(skillsData);
+      }
     } catch (err) {
       console.error('Failed to fetch Growth Hub data:', err);
     } finally {
@@ -111,6 +140,22 @@ export default function GrowthHub() {
     showToast('🚀 Mentorship request sent! The mentor has been notified.');
   };
 
+  const handleAnswerAdded = (questionId, newAnswer) => {
+    setQuestions((prevQuestions) =>
+      prevQuestions.map((q) => {
+        if ((q.id || q._id) === questionId) {
+          const existing = Array.isArray(q.answers) ? q.answers : [];
+          return {
+            ...q,
+            answers: [...existing, newAnswer],
+            answerCount: existing.length + 1
+          };
+        }
+        return q;
+      })
+    );
+  };
+
   // Live server-side query processing for opportunities (Module II 2.4 & IV 4.2)
   useEffect(() => {
     let isMounted = true;
@@ -152,7 +197,7 @@ export default function GrowthHub() {
       }
 
       // Search query
-      if (searchQuery.trim()) {
+      if (searchQuery.trim() && activeTab === 'mentors') {
         const q = searchQuery.toLowerCase();
         const nameMatch = (mentor.name || '').toLowerCase().includes(q);
         const roleMatch = (mentor.role || '').toLowerCase().includes(q);
@@ -166,7 +211,34 @@ export default function GrowthHub() {
 
       return true;
     });
-  }, [mentors, selectedTrack, searchQuery]);
+  }, [mentors, selectedTrack, searchQuery, activeTab]);
+
+  // Filtered Questions (Newest first, skill filter, search filter)
+  const filteredQuestions = useMemo(() => {
+    let list = Array.isArray(questions) ? [...questions] : [];
+
+    // Sort newest first
+    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    if (selectedSkillFilter !== 'All') {
+      list = list.filter((q) =>
+        Array.isArray(q.skillTags) &&
+        q.skillTags.some((tag) => tag.toLowerCase() === selectedSkillFilter.toLowerCase())
+      );
+    }
+
+    if (searchQuery.trim() && activeTab === 'discussions') {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((item) =>
+        (item.title || '').toLowerCase().includes(q) ||
+        (item.question || '').toLowerCase().includes(q) ||
+        (item.details || '').toLowerCase().includes(q) ||
+        (item.askedByName || '').toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [questions, selectedSkillFilter, searchQuery, activeTab]);
 
   return (
     <div className="flex flex-col w-full px-4 lg:px-8 pb-16 pt-8 max-w-7xl mx-auto">
@@ -196,7 +268,7 @@ export default function GrowthHub() {
             Growth Hub
           </h1>
           <p className="font-body-md text-sm text-on-surface-variant max-w-2xl leading-relaxed">
-            Discover verified internships, hackathons, and workshops — or book 1-on-1 mentorship sessions with verified alumni and industry professionals.
+            Discover verified internships, hackathons, and workshops — or book 1-on-1 mentorship sessions and join technical discussions with verified alumni and peers.
           </p>
         </div>
 
@@ -211,10 +283,19 @@ export default function GrowthHub() {
               <span>Post Opportunity</span>
             </button>
           )}
+          {activeTab === 'discussions' && (
+            <button
+              onClick={() => setIsAskModalOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-button-text text-sm hover:opacity-90 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer shadow-md"
+            >
+              <span className="material-symbols-outlined text-[18px]">add_comment</span>
+              <span>Ask a Question</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Primary Tabs (Opportunities vs Mentors) */}
+      {/* Primary Tabs (Opportunities vs Mentors vs Discussions) */}
       <div className="flex items-center gap-8 mb-6 border-b border-white/[0.08] relative">
         <button
           onClick={() => setActiveTab('opportunities')}
@@ -249,90 +330,200 @@ export default function GrowthHub() {
         </button>
 
         <button
-          onClick={() => setActiveTab('questions')}
+          onClick={() => setActiveTab('discussions')}
           className={`pb-3 text-sm font-button-text relative transition-colors cursor-pointer flex items-center gap-2 ${
-            activeTab === 'questions' ? 'text-primary font-semibold' : 'text-on-surface-variant hover:text-on-surface'
+            activeTab === 'discussions' ? 'text-primary font-semibold' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
           <span className="material-symbols-outlined text-[18px]">forum</span>
-          <span>Q&amp;A</span>
-          {activeTab === 'questions' && <motion.div layoutId="growthTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
+          <span>Discussions ({questions.length})</span>
+          {activeTab === 'discussions' && (
+            <motion.div
+              layoutId="growthTab"
+              className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full"
+            />
+          )}
         </button>
       </div>
 
-      {/* Controls Bar: Search & Quick Filters */}
-      {activeTab !== 'questions' && <div className="flex flex-col gap-4 mb-8">
-        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
-              search
-            </span>
-            <input
-              type="text"
-              placeholder={activeTab === 'opportunities' ? 'Search by title, organization, or tech stack...' : 'Search mentors by name, company, or skills...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container border border-white/[0.08] rounded-xl py-2.5 pl-10 pr-10 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-              </button>
-            )}
+      {/* Controls Bar: Search & Quick Filters for Opportunities & Mentors */}
+      {activeTab !== 'discussions' && (
+        <div className="flex flex-col gap-4 mb-8">
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder={
+                  activeTab === 'opportunities'
+                    ? 'Search by title, organization, or tech stack...'
+                    : 'Search mentors by name, company, or skills...'
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-surface-container border border-white/[0.08] rounded-xl py-2.5 pl-10 pr-10 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Quick Filter Pills */}
-        {activeTab === 'opportunities' ? (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-            {OPPORTUNITY_CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border ${
-                    isSelected
-                      ? 'bg-primary text-on-primary border-primary shadow-sm'
-                      : 'bg-surface-container border-white/[0.08] text-on-surface-variant hover:text-on-surface hover:bg-white/[0.05]'
-                  }`}
-                >
-                  {cat.icon && <span className="material-symbols-outlined text-[15px]">{cat.icon}</span>}
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-            {MENTOR_TRACKS.map((track) => {
-              const isSelected = selectedTrack === track;
-              return (
-                <button
-                  key={track}
-                  onClick={() => setSelectedTrack(track)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono-sm transition-all shrink-0 cursor-pointer border ${
-                    isSelected
-                      ? 'bg-primary text-on-primary border-primary shadow-sm'
-                      : 'bg-surface-container border-white/[0.08] text-on-surface-variant hover:text-on-surface hover:bg-white/[0.05]'
-                  }`}
-                >
-                  {track}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>}
+          {/* Quick Filter Pills */}
+          {activeTab === 'opportunities' ? (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {OPPORTUNITY_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-mono-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border ${
+                      isSelected
+                        ? 'bg-primary text-on-primary border-primary shadow-sm'
+                        : 'bg-surface-container border-white/[0.08] text-on-surface-variant hover:text-on-surface hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    {cat.icon && <span className="material-symbols-outlined text-[15px]">{cat.icon}</span>}
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {MENTOR_TRACKS.map((track) => {
+                const isSelected = selectedTrack === track;
+                return (
+                  <button
+                    key={track}
+                    onClick={() => setSelectedTrack(track)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-mono-sm transition-all shrink-0 cursor-pointer border ${
+                      isSelected
+                        ? 'bg-primary text-on-primary border-primary shadow-sm'
+                        : 'bg-surface-container border-white/[0.08] text-on-surface-variant hover:text-on-surface hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    {track}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="min-h-[400px]">
-        {activeTab === 'questions' ? (
-          <CommunityQA />
+        {activeTab === 'discussions' ? (
+          <div className="flex flex-col gap-6">
+            {/* Discussions Header Row: Skill Filter + Ask a Question Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar flex-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSkillFilter('All')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono-sm transition-all shrink-0 cursor-pointer border ${
+                    selectedSkillFilter === 'All'
+                      ? 'bg-primary text-on-primary border-primary shadow-sm font-semibold'
+                      : 'bg-surface-container border-white/[0.08] text-on-surface-variant hover:text-on-surface hover:bg-white/[0.05]'
+                  }`}
+                >
+                  All
+                </button>
+                {skillsList.map((skill) => {
+                  const skillName = skill.name || skill;
+                  const isSelected = selectedSkillFilter === skillName;
+                  return (
+                    <button
+                      key={skill.id || skill._id || skillName}
+                      type="button"
+                      onClick={() => setSelectedSkillFilter(skillName)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-mono-sm transition-all shrink-0 cursor-pointer border ${
+                        isSelected
+                          ? 'bg-primary text-on-primary border-primary shadow-sm font-semibold'
+                          : 'bg-surface-container border-white/[0.08] text-on-surface-variant hover:text-on-surface hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      {skillName}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAskModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-primary text-on-primary font-button-text text-xs hover:opacity-90 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-md self-start sm:self-auto"
+              >
+                <span className="material-symbols-outlined text-[16px]">add_comment</span>
+                <span>Ask a Question</span>
+              </button>
+            </div>
+
+            {/* Discussions List / Loading / Error / Empty States */}
+            {questionsLoading || isLoading ? (
+              <div className="flex flex-col gap-5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-44 bg-surface-container/60 border border-white/[0.06] rounded-2xl animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : questionsError ? (
+              <div className="p-6 rounded-2xl bg-error/10 border border-error/20 text-center flex flex-col items-center gap-3">
+                <p className="text-sm text-error">{questionsError}</p>
+                <button
+                  type="button"
+                  onClick={fetchQuestions}
+                  className="px-4 py-2 rounded-xl bg-surface-variant border border-white/[0.1] text-xs font-button-text hover:text-on-surface cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filteredQuestions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[320px] text-on-surface-variant border border-white/[0.08] border-dashed rounded-2xl p-10 text-center bg-surface-container/30">
+                <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center text-on-surface-variant mb-4">
+                  <span className="material-symbols-outlined text-3xl opacity-60">forum</span>
+                </div>
+                <h3 className="font-button-text text-on-surface text-base mb-1">
+                  No questions yet. Be the first to ask.
+                </h3>
+                <p className="font-body-md text-xs max-w-md text-on-surface-variant mb-5">
+                  {selectedSkillFilter !== 'All'
+                    ? `No discussions found under "${selectedSkillFilter}". Try selecting "All" or ask a question.`
+                    : 'Got a technical blocker, architecture query, or career question? Ask the community!'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsAskModalOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-button-text cursor-pointer hover:opacity-90 flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add_comment</span>
+                  <span>Ask a Question</span>
+                </button>
+              </div>
+            ) : (
+              <motion.div layout className="flex flex-col gap-5">
+                {filteredQuestions.map((q) => (
+                  <QuestionCard
+                    key={q.id || q._id}
+                    question={q}
+                    onAnswerAdded={handleAnswerAdded}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </div>
         ) : isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -436,6 +627,17 @@ export default function GrowthHub() {
         mentor={selectedMentorForRequest}
         onClose={() => setSelectedMentorForRequest(null)}
         onSubmit={handleRequestMentorship}
+      />
+
+      {/* Ask Question Modal */}
+      <AskQuestionModal
+        isOpen={isAskModalOpen}
+        onClose={() => setIsAskModalOpen(false)}
+        onSuccess={async () => {
+          await fetchQuestions();
+          showToast('🎉 Question posted successfully!');
+        }}
+        skills={skillsList}
       />
     </div>
   );

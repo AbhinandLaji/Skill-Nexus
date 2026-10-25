@@ -103,7 +103,10 @@ export default function DashboardLayout() {
           <Outlet context={{
             user, skills, channels, isLoading,
             onChannelUpdated: (updatedChannel) => {
-              setChannels(prev => prev.map(c => (c.id || c._id) === (updatedChannel.id || updatedChannel._id) ? updatedChannel : c));
+              setChannels(prev => prev.map(c => ((c.id || c._id) === (updatedChannel.id || updatedChannel._id) || c.name === updatedChannel.id || c.name === `#${updatedChannel.id}` || c.name === updatedChannel.name) ? { ...c, ...updatedChannel } : c));
+            },
+            onResetChannelUnread: (targetChannelId) => {
+              setChannels(prev => prev.map(c => ((c.id || c._id) === targetChannelId || c.name === targetChannelId || c.name === `#${targetChannelId}`) ? { ...c, unreadCount: 0 } : c));
             }
           }} />
         </main>

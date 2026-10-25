@@ -8,19 +8,20 @@ import VoiceChannel from '../components/VoiceChannel';
 import ForumChannel from '../components/ForumChannel';
 import CommunityEvents from '../components/CommunityEvents';
 import MessageThread from '../components/MessageThread';
-import { getRealtimeSocket } from '../services/realtime';
+import { getSocket } from '../services/socket';
 
 const mergeMessages = (...groups) => {
   const messagesById = new Map();
   groups.flat().forEach((message) => {
-    if (message?.id) messagesById.set(message.id, message);
+    const key = String(message?._id || message?.id || '');
+    if (key) messagesById.set(key, message);
   });
   return [...messagesById.values()];
 };
 
 export default function ChannelView() {
   const { channelId } = useParams();
-  const { channels = [], onChannelUpdated, user } = useOutletContext() || {};
+  const { channels = [], onChannelUpdated, onResetChannelUnread, user } = useOutletContext() || {};
   const currentUserId = user?.id || user?._id;
   const [messages, setMessages] = useState([]);
   const [channel, setChannel] = useState(null);
@@ -40,13 +41,16 @@ export default function ChannelView() {
     let isMounted = true;
     async function fetchChannelMessages() {
       if (!channelId) return;
+      onResetChannelUnread?.(channelId);
       setMessages([]);
       setChannelError('');
       try {
         const details = await api.getChannel(channelId);
         if (isMounted) {
-          setChannel(details);
-          onChannelUpdated?.(details);
+          const resetDetails = { ...details, unreadCount: 0 };
+          setChannel(resetDetails);
+          onChannelUpdated?.(resetDetails);
+          onResetChannelUnread?.(channelId);
         }
         const data = await api.getMessages(channelId);
         if (isMounted) {
@@ -69,39 +73,61 @@ export default function ChannelView() {
   useEffect(() => {
     if (!channelId) return undefined;
 
-    const socket = getRealtimeSocket();
+    const socket = getSocket();
     const joinChannel = () => socket.emit('channel:join', channelId);
-    const handleMessage = (message) => {
-      setMessages((previous) => mergeMessages(previous, [message]));
+
+    const handleMessageNew = (message) => {
+      if (!message) return;
+      const msgChannelId = message.channelId ? String(message.channelId) : null;
+      if (msgChannelId && msgChannelId !== String(channelId)) return;
+
+      const msgId = String(message._id || message.id || '');
+      setMessages((previous) => {
+        const isDuplicate = previous.some((m) => {
+          const currentId = String(m._id || m.id || '');
+          return currentId && currentId === msgId;
+        });
+        if (isDuplicate) return previous;
+        return [...previous, message];
+      });
     };
+
     const handleMessageUpdated = (updated) => {
       const personalized = { ...updated, reactions: (updated.reactions || []).map((reaction) => ({
         ...reaction,
         reactedByMe: reaction.userIds?.some((id) => String(id) === String(currentUserId)) || false
       })) };
-      setMessages((previous) => previous.map((message) => message.id === personalized.id ? personalized : message));
+      setMessages((previous) => previous.map((message) => (message.id === personalized.id || message._id === personalized._id) ? personalized : message));
       setPinnedMessages((previous) => personalized.isPinned
-        ? [personalized, ...previous.filter((message) => message.id !== personalized.id)]
-        : previous.filter((message) => message.id !== personalized.id));
+        ? [personalized, ...previous.filter((message) => message.id !== personalized.id && message._id !== personalized._id)]
+        : previous.filter((message) => message.id !== personalized.id && message._id !== personalized._id));
     };
+
     const handleThreadReply = ({ parentMessageId, threadCount }) => {
-      setMessages((previous) => previous.map((message) => message.id === parentMessageId ? { ...message, threadCount } : message));
+      setMessages((previous) => previous.map((message) => (message.id === parentMessageId || message._id === parentMessageId) ? { ...message, threadCount } : message));
     };
 
     socket.on('connect', joinChannel);
-    socket.on('channel:message', handleMessage);
+    socket.on('message:new', handleMessageNew);
+    socket.on('channel:message', handleMessageNew);
     socket.on('channel:message-updated', handleMessageUpdated);
     socket.on('channel:thread-reply', handleThreadReply);
-    if (socket.connected) joinChannel();
+
+    if (socket.connected) {
+      joinChannel();
+    } else {
+      socket.connect();
+    }
 
     return () => {
       socket.emit('channel:leave', channelId);
       socket.off('connect', joinChannel);
-      socket.off('channel:message', handleMessage);
+      socket.off('message:new', handleMessageNew);
+      socket.off('channel:message', handleMessageNew);
       socket.off('channel:message-updated', handleMessageUpdated);
       socket.off('channel:thread-reply', handleThreadReply);
     };
-  }, [channelId]);
+  }, [channelId, currentUserId]);
 
   useEffect(() => {
     if (!isPinnedOpen || !channelId) return;
@@ -123,7 +149,7 @@ export default function ChannelView() {
     try {
       await api.joinChannel(channelId);
       await refreshChannel();
-      getRealtimeSocket().emit('channel:join', channelId);
+      getSocket().emit('channel:join', channelId);
       const data = await api.getMessages(channelId);
       setMessages(previous => mergeMessages(Array.isArray(data) ? data : [], previous));
       setNotice('You joined this channel.');
@@ -152,7 +178,14 @@ export default function ChannelView() {
   };
 
   const handleNewMessage = (msg) => {
-    setMessages(prev => mergeMessages(prev, [msg]));
+    if (!msg) return;
+    const msgId = String(msg._id || msg.id || '');
+    setMessages((previous) => {
+      if (msgId && previous.some((m) => String(m._id || m.id || '') === msgId)) {
+        return previous;
+      }
+      return [...previous, msg];
+    });
   };
 
   const handleToggleReaction = async (messageId, emoji) => {
@@ -183,7 +216,7 @@ export default function ChannelView() {
   const displayChannelName = cleanName;
 
   const currentChannel = channel || activeChannel;
-  const memberCount = currentChannel?.memberCount || currentChannel?.members?.length || 0;
+  const memberCount = Array.isArray(currentChannel?.members) ? currentChannel.members.length : (currentChannel?.memberCount || 0);
   const isMember = Boolean(currentChannel?.isMember);
 
   return (
@@ -217,37 +250,48 @@ export default function ChannelView() {
             <button onClick={handleLeave} disabled={busy} className="px-3 py-2 rounded-lg bg-surface-container text-on-surface text-sm">Leave</button>
           ) : null}
           {isMember && <button type="button" onClick={() => setShowEvents((value) => !value)} className={`px-3 py-2 rounded-lg text-sm ${showEvents ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface'}`}><span className="material-symbols-outlined align-middle text-[18px] mr-1">event</span>Events</button>}
-          {isMember && currentChannel?.channelType === 'text' && <button
-            onClick={() => {
-              setIsPinnedOpen(prev => !prev);
-              setIsFilesOpen(false);
-            }}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all p-1 cursor-pointer group ${
-              isPinnedOpen
-                ? 'bg-primary/20 text-primary border border-primary/40'
-                : 'bg-surface-container text-on-surface hover:bg-white/[0.08] hover:text-primary-fixed border border-white/[0.06]'
-            }`}
-            title="Pinned Messages"
-            aria-label="Pinned Messages"
-          >
-            <span className="material-symbols-outlined text-[20px] transition-colors">push_pin</span>
-          </button>}
           
-          {isMember && currentChannel?.channelType === 'text' && <button
-            onClick={() => {
-              setIsFilesOpen(prev => !prev);
-              setIsPinnedOpen(false);
-            }}
-            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all p-1 cursor-pointer group ${
-              isFilesOpen
-                ? 'bg-primary/20 text-primary border border-primary/40'
-                : 'bg-surface-container text-on-surface hover:bg-white/[0.08] hover:text-primary-fixed border border-white/[0.06]'
-            }`}
-            title="Shared Resources"
-            aria-label="Shared Resources"
-          >
-            <span className="material-symbols-outlined text-[20px] transition-colors">folder</span>
-          </button>}
+          {/* Pinned Messages - kept in code but hidden per requirement 10 */}
+          {/*
+          isMember && currentChannel?.channelType === 'text' && (
+            <button
+              onClick={() => {
+                setIsPinnedOpen(prev => !prev);
+                setIsFilesOpen(false);
+              }}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all p-1 cursor-pointer group ${
+                isPinnedOpen
+                  ? 'bg-primary/20 text-primary border border-primary/40'
+                  : 'bg-surface-container text-on-surface hover:bg-white/[0.08] hover:text-primary-fixed border border-white/[0.06]'
+              }`}
+              title="Pinned Messages"
+              aria-label="Pinned Messages"
+            >
+              <span className="material-symbols-outlined text-[20px] transition-colors">push_pin</span>
+            </button>
+          )
+          */}
+          
+          {/* Shared Resources - kept in code but hidden per requirement 10 */}
+          {/*
+          isMember && currentChannel?.channelType === 'text' && (
+            <button
+              onClick={() => {
+                setIsFilesOpen(prev => !prev);
+                setIsPinnedOpen(false);
+              }}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all p-1 cursor-pointer group ${
+                isFilesOpen
+                  ? 'bg-primary/20 text-primary border border-primary/40'
+                  : 'bg-surface-container text-on-surface hover:bg-white/[0.08] hover:text-primary-fixed border border-white/[0.06]'
+              }`}
+              title="Shared Resources"
+              aria-label="Shared Resources"
+            >
+              <span className="material-symbols-outlined text-[20px] transition-colors">folder</span>
+            </button>
+          )
+          */}
         </div>
       </div>
 
@@ -270,7 +314,7 @@ export default function ChannelView() {
         <VoiceChannel channelId={channelId} channelName={displayChannelName} />
       ) : currentChannel?.channelType === 'forum' ? (
         <ForumChannel channelId={channelId} />
-      ) : <><ChatArea messages={messages} channelId={channelId} canPin={currentChannel?.isAdmin} onOpenThread={setThreadMessage} onToggleReaction={handleToggleReaction} onTogglePin={handleTogglePin} /><MessageInput channelId={channelId} onMessageSent={handleNewMessage} /></> : (
+      ) : <><ChatArea messages={messages} channelId={channelId} canPin={currentChannel?.isAdmin} onOpenThread={setThreadMessage} onToggleReaction={handleToggleReaction} onTogglePin={handleTogglePin} /><MessageInput channelId={channelId} channelName={displayChannelName} onMessageSent={handleNewMessage} /></> : (
         <div className="flex-1 flex items-center justify-center text-center p-8 text-on-surface-variant">
           {currentChannel?.isPrivate ? 'This private channel is only visible to invited members.' : 'Join this channel to read and send messages.'}
         </div>

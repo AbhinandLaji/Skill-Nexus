@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { api } from '../services/api';
 
-export default function MessageInput({ channelId, onMessageSent }) {
+export default function MessageInput({ channelId, channelName, onMessageSent }) {
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState('');
@@ -237,7 +237,7 @@ export default function MessageInput({ channelId, onMessageSent }) {
             onKeyDown={handleKeyDown}
             disabled={isSending}
             className="w-full bg-transparent border-none resize-none font-body-md text-body-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:ring-0 min-h-[44px] max-h-32 custom-scrollbar"
-            placeholder={isCodeMode ? "Add an optional description for this snippet..." : "Message #python-help..."}
+            placeholder={isCodeMode ? "Add an optional description for this snippet..." : `Message #${channelName ? (channelName.startsWith('#') ? channelName.slice(1) : channelName) : 'general'}...`}
             rows="1"
           />
         </div>

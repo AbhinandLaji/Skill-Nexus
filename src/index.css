@@ -108,6 +108,10 @@
   font-weight: 600;
 }
 
+:root {
+  color-scheme: dark;
+}
+
 body {
   @apply bg-background font-body-md text-on-background;
 }

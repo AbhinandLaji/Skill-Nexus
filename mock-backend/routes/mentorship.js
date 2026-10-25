@@ -7,6 +7,8 @@ const router = express.Router();
 const formatQuestion = (q) => ({
     id: q._id ? q._id.toString() : q.id,
     _id: q._id ? q._id.toString() : q.id,
+    title: q.title || q.question,
+    details: q.details || '',
     question: q.question,
     askedById: q.askedById ? q.askedById.toString() : null,
     askedByName: q.askedByName || 'Anonymous',
@@ -20,7 +22,8 @@ const formatQuestion = (q) => ({
         answeredByName: a.answeredByName || 'Community Member',
         isMentor: a.isMentor || false,
         createdAt: a.createdAt || new Date()
-    }))
+    })),
+    createdAt: q.createdAt || new Date()
 });
 
 // GET /api/mentorship/questions
@@ -36,15 +39,18 @@ router.get('/questions', async (req, res) => {
 // POST /api/mentorship/questions
 router.post('/questions', protect, async (req, res) => {
     try {
-        const { question, skillTags } = req.body;
+        const { question, title, details, skillTags } = req.body;
+        const questionContent = (question || title || '').trim();
 
-        if (!question) {
+        if (!questionContent) {
             return res.status(400).json({ message: 'Question content is required' });
         }
 
         const newQuestion = await Question.create({
-            question,
-            skillTags: Array.isArray(skillTags) ? skillTags : [],
+            title: title ? String(title).trim() : questionContent,
+            details: details ? String(details).trim() : '',
+            question: questionContent,
+            skillTags: Array.isArray(skillTags) ? skillTags.filter(Boolean) : [],
             askedById: req.user._id,
             askedByName: req.user.name || 'Anonymous',
             answerCount: 0,
@@ -65,7 +71,7 @@ router.post('/questions', protect, async (req, res) => {
 router.post('/questions/:id/answers', protect, async (req, res) => {
     try {
         const { id } = req.params;
-        const { text } = req.body;
+        const text = String(req.body.text || '').trim();
 
         if (!text) {
             return res.status(400).json({ message: 'Answer text is required' });
@@ -93,10 +99,12 @@ router.post('/questions/:id/answers', protect, async (req, res) => {
         return res.status(201).json({
             answer: {
                 id: createdAnswer._id.toString(),
+                _id: createdAnswer._id.toString(),
                 text: createdAnswer.text,
                 answeredById: createdAnswer.answeredById?.toString(),
                 answeredByName: createdAnswer.answeredByName,
-                isMentor: createdAnswer.isMentor
+                isMentor: createdAnswer.isMentor,
+                createdAt: createdAnswer.createdAt || new Date()
             }
         });
     } catch (error) {

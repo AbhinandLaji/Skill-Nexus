@@ -34,9 +34,17 @@ const answerSchema = new mongoose.Schema(
 
 const questionSchema = new mongoose.Schema(
     {
+        title: {
+            type: String,
+            trim: true
+        },
         question: {
             type: String,
             required: true,
+            trim: true
+        },
+        details: {
+            type: String,
             trim: true
         },
         askedById: {
