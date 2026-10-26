@@ -57,8 +57,13 @@ export default function DashboardLayout() {
 
   // 2. Communities I joined
   const isAcceptedMember = (c) => {
+    if (c.isMember) return true;
     if (!currentUserId || !c.members || !Array.isArray(c.members)) return false;
-    return c.members.some(m => String(m?.id || m?._id || m) === String(currentUserId));
+    return c.members.some(m => {
+      if (!m) return false;
+      const memberId = typeof m === 'object' && m._id ? m._id.toString() : (m.id ? m.id.toString() : m.toString());
+      return memberId === String(currentUserId);
+    });
   };
 
   // Membership is based on actual channel membership, not the user's skill preferences.

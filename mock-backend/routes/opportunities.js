@@ -106,10 +106,11 @@ router.get('/', async (req, res) => {
         let opps = await Opportunity.find(queryFilter).sort({ createdAt: -1 });
 
         // Auto-seed if database collection is empty so UI is immediately populated
-        if (!opps || opps.length === 0) {
+        const totalCount = await Opportunity.estimatedDocumentCount();
+        if (totalCount === 0) {
             try {
                 await Opportunity.insertMany(SEED_OPPORTUNITIES);
-                opps = await Opportunity.find().sort({ createdAt: -1 });
+                opps = await Opportunity.find(queryFilter).sort({ createdAt: -1 });
             } catch (seedErr) {
                 console.error('Opportunity seed error:', seedErr.message);
             }

@@ -55,6 +55,25 @@ router.patch('/me', protect, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        if (req.body.skills && Array.isArray(req.body.skills)) {
+            const Channel = require('../models/Channel');
+            // Find all channels associated with the selected skills
+            const matchedChannels = await Channel.find({ skillId: { $in: req.body.skills } });
+
+            // Add the user to each matched channel's members array
+            for (const channel of matchedChannels) {
+                const isMember = (channel.members || []).some(m => String(m) === String(req.user._id));
+                if (!isMember) {
+                    // Use findByIdAndUpdate to bypass strict schema validation on legacy documents
+                    await Channel.findByIdAndUpdate(
+                        channel._id,
+                        { $addToSet: { members: req.user._id }, $inc: { memberCount: 1 } },
+                        { new: true, runValidators: false }
+                    );
+                }
+            }
+        }
+
         const formatted = formatUser(user);
         // Returning formatted object with user property for compatibility with both handlers
         return res.json({

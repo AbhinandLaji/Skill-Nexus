@@ -9,6 +9,21 @@ const { protect } = require('../middleware/auth');
 const router = express.Router();
 
 const idOf = (value) => String(value?._id || value?.id || value);
+const findChannelQuery = (idParam) => {
+    if (!idParam) return { _id: null };
+    const raw = String(idParam).trim();
+    if (raw.match(/^[0-9a-fA-F]{24}$/)) {
+        return { _id: raw };
+    }
+    const cleanSlug = raw.startsWith('#') ? raw.slice(1) : raw;
+    return {
+        $or: [
+            { name: raw },
+            { name: `#${cleanSlug}` },
+            { name: cleanSlug }
+        ]
+    };
+};
 const isMember = (channel, userId) =>
     idOf(channel.admin) === idOf(userId) || (channel.members || []).some((member) => idOf(member) === idOf(userId));
 const formatMessage = (message, userId) => {
@@ -43,7 +58,10 @@ const formatChannel = (channel, userId) => ({
     memberCount: channel.members?.length || 1,
     unreadCount: channel.unreadCount || 0,
     members: (channel.members || []).map((member) => ({
-        id: idOf(member), name: member.name || 'Community member', avatar: member.avatar || null
+        id: idOf(member),
+        _id: idOf(member),
+        name: member.name || 'Community member',
+        avatar: member.avatar || null
     })),
     teamId: channel.teamId ? idOf(channel.teamId) : null,
     isPrivate: Boolean(channel.isPrivate),
@@ -89,7 +107,7 @@ router.get('/', protect, async (req, res) => {
 // Private channel details are visible only to members and the owner.
 router.get('/:id', protect, async (req, res) => {
     try {
-        const channel = await Channel.findById(req.params.id).populate('members', 'name email avatar');
+        const channel = await Channel.findOne(findChannelQuery(req.params.id)).populate('members', 'name email avatar');
         if (!channel) return res.status(404).json({ message: 'Channel not found' });
         if (channel.isPrivate && !isMember(channel, req.user._id)) {
             return res.status(403).json({ message: 'This private channel requires an invitation.' });
@@ -133,7 +151,7 @@ router.post('/', protect, async (req, res) => {
 // Anyone signed in may join a public channel. Private channels require an invite.
 router.post('/:id/join', protect, async (req, res) => {
     try {
-        const channel = await Channel.findById(req.params.id);
+        const channel = await Channel.findOne(findChannelQuery(req.params.id));
         if (!channel) return res.status(404).json({ message: 'Channel not found' });
         if (isMember(channel, req.user._id)) return res.json({ message: 'Already a member' });
         if (channel.isPrivate) {
@@ -141,13 +159,21 @@ router.post('/:id/join', protect, async (req, res) => {
             const invite = (channel.invitations || []).find((item) => item.email === email && item.status === 'pending');
             if (!invite) return res.status(403).json({ message: 'You need an invitation to join this private channel.' });
             invite.status = 'accepted';
+            await Channel.updateOne(
+                { _id: channel._id, 'invitations.email': email },
+                { $set: { 'invitations.$.status': 'accepted' } }
+            );
         }
-        channel.members.addToSet(req.user._id);
-        await channel.save();
-        await channel.populate('members', 'name email avatar');
-        return res.json({ message: 'Joined channel', channel: formatChannel(channel, req.user._id) });
+
+        const updatedChannel = await Channel.findByIdAndUpdate(
+            channel._id,
+            { $addToSet: { members: req.user._id }, $inc: { memberCount: 1 } },
+            { new: true, runValidators: false } // runValidators: false prevents the missing admin crash
+        ).populate('members', 'name email avatar');
+
+        return res.json({ message: 'Joined channel', channel: formatChannel(updatedChannel, req.user._id) });
     } catch (error) {
-        return res.status(400).json({ message: 'Unable to join channel' });
+        return res.status(400).json({ message: 'Unable to join channel', error: error.message });
     }
 });
 
