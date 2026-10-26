@@ -12,7 +12,7 @@ const protect = async (req, res, next) => {
             token = req.headers.authorization.split(' ')[1];
 
             // If token is the mock token used during testing/development
-            if (token === 'mock-jwt-token') {
+            if (process.env.NODE_ENV !== 'production' && token === 'mock-jwt-token') {
                 const existingUser = await User.findOne();
                 if (existingUser) {
                     req.user = existingUser;

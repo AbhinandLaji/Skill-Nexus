@@ -1,5 +1,18 @@
-const BASE_URL = 'http://localhost:5000/api';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+export const BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
+export const getAvatarUrl = (avatar) => {
+  if (!avatar) return null;
+  if (avatar.startsWith('/uploads')) {
+    return `${BACKEND_URL}${avatar}`;
+  }
+  return avatar;
+};
+
+export const getChannelFileUrl = (channelId, filename) => {
+  if (!channelId || !filename) return '#';
+  return `${BASE_URL}/channels/${channelId}/files/${encodeURIComponent(filename)}`;
+};
 
 async function fetcher(endpoint, options = {}) {
   const token = localStorage.getItem('auth_token');
@@ -20,12 +33,19 @@ async function fetcher(endpoint, options = {}) {
     });
   } catch (err) {
     if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
-      throw new Error('Cannot connect to backend server. Please make sure the backend server is running on http://localhost:5000');
+      throw new Error(`Cannot connect to backend server. Please make sure the backend server is running on ${BACKEND_URL}`);
     }
     throw err;
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+        window.location.href = '/auth';
+      }
+    }
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.message || errData.error || `API error: ${res.statusText}`);
   }
@@ -51,12 +71,19 @@ async function uploadFetcher(endpoint, formData) {
     });
   } catch (err) {
     if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
-      throw new Error('Cannot connect to backend server. Please make sure the backend server is running on http://localhost:5000');
+      throw new Error(`Cannot connect to backend server. Please make sure the backend server is running on ${BACKEND_URL}`);
     }
     throw err;
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+        window.location.href = '/auth';
+      }
+    }
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.message || errData.error || `Upload error: ${res.statusText}`);
   }

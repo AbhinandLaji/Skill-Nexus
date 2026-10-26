@@ -5,7 +5,14 @@ import TopBar from './TopBar';
 import { api } from '../services/api';
 
 export default function DashboardLayout() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [skills, setSkills] = useState([]);
   const [channels, setChannels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +41,12 @@ export default function DashboardLayout() {
           api.getSkills().catch(() => [])
         ]);
         
-        setUser(userData);
+        if (userData) {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else {
+          setUser(userData);
+        }
         setChannels(channelsData || []);
         setSkills(skillsData || []);
       } catch (err) {

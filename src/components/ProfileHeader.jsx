@@ -8,7 +8,7 @@ export default function ProfileHeader({ user, onEditClick, onLogout }) {
         {user.avatar ? (
           <img 
             className="w-full h-full object-cover" 
-            src={user.avatar.startsWith('/uploads') ? `http://localhost:5000${user.avatar}` : user.avatar} 
+            src={user.avatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${user.avatar}` : user.avatar} 
             alt={user.name} 
           />
         ) : (

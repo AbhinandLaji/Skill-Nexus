@@ -13,7 +13,7 @@ export default function ActivityFeedItem({ item, colorClass }) {
       <div className="flex gap-4">
         <div className="w-10 h-10 rounded-sm bg-surface-container-high border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
           {item.authorAvatar ? (
-            <img src={item.authorAvatar.startsWith('/uploads') ? `http://localhost:5000${item.authorAvatar}` : item.authorAvatar} alt={item.authorName} className="w-full h-full object-cover" />
+            <img src={item.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${item.authorAvatar}` : item.authorAvatar} alt={item.authorName} className="w-full h-full object-cover" />
           ) : (
             <span className="material-symbols-outlined text-on-surface-variant">person</span>
           )}

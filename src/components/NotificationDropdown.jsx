@@ -217,7 +217,7 @@ export default function NotificationDropdown({
                       {/* Avatar or Icon */}
                       {n.senderAvatar ? (
                         <img
-                          src={n.senderAvatar.startsWith('/uploads') ? `http://localhost:5000${n.senderAvatar}` : n.senderAvatar}
+                          src={n.senderAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${n.senderAvatar}` : n.senderAvatar}
                           alt={n.senderName || 'Sender'}
                           className="w-9 h-9 rounded-full object-cover border border-white/10 flex-shrink-0 mt-0.5"
                         />

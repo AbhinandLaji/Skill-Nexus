@@ -92,6 +92,9 @@ export default function AuthPage() {
       // Store token and redirect
       if (res.token) {
         localStorage.setItem('auth_token', res.token);
+        if (res.user) {
+          localStorage.setItem('user', JSON.stringify(res.user));
+        }
 
         if (mode === 'login') {
           navigate('/dashboard');
@@ -126,6 +129,9 @@ export default function AuthPage() {
       const res = await api.verifyOtp({ email: email.trim(), otp: otp.trim() });
       if (res.token) {
         localStorage.setItem('auth_token', res.token);
+        if (res.user) {
+          localStorage.setItem('user', JSON.stringify(res.user));
+        }
         if (mode === 'login') {
           navigate('/dashboard');
         } else {

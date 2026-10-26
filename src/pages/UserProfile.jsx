@@ -16,6 +16,7 @@ export default function UserProfile() {
   const handleLogout = () => {
     disconnectSocket();
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
     navigate('/auth');
   };
   

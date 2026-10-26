@@ -1,9 +1,3 @@
-const dns = require('dns');
-try {
-    dns.setServers(['8.8.8.8', '8.8.4.4']);
-} catch (e) {
-    // Ignore if not supported
-}
 
 const express = require('express');
 const http = require('http');
@@ -46,7 +40,7 @@ io.use(async (socket, next) => {
         if (!token) return next(new Error('Not authorized, no token provided'));
 
         let user;
-        if (token === 'mock-jwt-token') {
+        if (process.env.NODE_ENV !== 'production' && token === 'mock-jwt-token') {
             user = await User.findOne().select('-password');
         } else {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
@@ -306,16 +300,25 @@ const connectDB = async () => {
             serverSelectionTimeoutMS: 15000
         });
         console.log(`MongoDB connected successfully to database: "${conn.connection.name}"`);
+        return conn;
     } catch (error) {
         console.error('MongoDB connection failed:', error.message);
-        setTimeout(connectDB, 5000);
+        throw error;
     }
 };
 
-connectDB();
-
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-    console.log(`Skill-Nexus server running on port ${PORT}`);
-});
+const startServer = async () => {
+    try {
+        await connectDB();
+        server.listen(PORT, () => {
+            console.log(`Skill-Nexus server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Could not start server due to database connection error, retrying in 5 seconds...', error.message);
+        setTimeout(startServer, 5000);
+    }
+};
+
+startServer();
