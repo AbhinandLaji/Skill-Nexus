@@ -12,10 +12,18 @@ async function fetcher(endpoint, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+      throw new Error('Cannot connect to backend server. Please make sure the backend server is running on http://localhost:5000');
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
@@ -34,11 +42,19 @@ async function uploadFetcher(endpoint, formData) {
 
   // NOTE: Do not set Content-Type header here!
   // The browser sets multipart/form-data with the boundary automatically.
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+  } catch (err) {
+    if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+      throw new Error('Cannot connect to backend server. Please make sure the backend server is running on http://localhost:5000');
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));

@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "vite",
+    "server": "node mock-backend/server.js",
+    "server:dev": "node --watch mock-backend/server.js",
+    "seed": "node mock-backend/seed.js",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
