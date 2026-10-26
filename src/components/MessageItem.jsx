@@ -17,7 +17,7 @@ export default function MessageItem({ message, channelId, canPin, onOpenThread, 
       <div className="w-10 h-10 rounded overflow-hidden mt-1 shrink-0 bg-surface-container border border-white/[0.08] flex items-center justify-center">
         {message.authorAvatar ? (
           <img 
-            src={message.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${message.authorAvatar}` : message.authorAvatar} 
+            src={message.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL}${message.authorAvatar}` : message.authorAvatar} 
             alt={message.authorName} 
             className="w-full h-full object-cover" 
           />
@@ -50,7 +50,7 @@ export default function MessageItem({ message, channelId, canPin, onOpenThread, 
           const fileType = fileData.fileType || fileName.split('.').pop()?.toUpperCase() || 'FILE';
           const storedFilename = fileData.fileUrl ? fileData.fileUrl.split('/').pop() : '';
           const downloadUrl = channelId && storedFilename
-            ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/channels/${channelId}/files/${encodeURIComponent(storedFilename)}`
+            ? `${import.meta.env.VITE_BACKEND_URL}/api/channels/${channelId}/files/${encodeURIComponent(storedFilename)}`
             : '#';
 
           return (

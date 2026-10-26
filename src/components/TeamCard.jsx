@@ -94,7 +94,7 @@ export default function TeamCard({ team, currentUser, onDelete }) {
       <div className="pt-4 mt-4 border-t border-white/[0.08] flex flex-row flex-wrap items-center justify-between gap-3 w-full">
         <div className="flex flex-row items-center gap-3 min-w-0">
           {team.authorAvatar ? (
-            <img className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0" src={team.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${team.authorAvatar}` : team.authorAvatar} alt={team.authorName} />
+            <img className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0" src={team.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL}${team.authorAvatar}` : team.authorAvatar} alt={team.authorName} />
           ) : (
             <div className="w-8 h-8 rounded-full bg-surface-variant border border-white/10 flex items-center justify-center shrink-0">
               <span className="font-mono-label text-mono-label text-on-surface">{team.authorName ? team.authorName.charAt(0) : '?'}</span>

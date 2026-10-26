@@ -397,7 +397,7 @@ export default function ChannelView() {
                       </span>
                       {channelFiles.map((file, idx) => {
                         const storedFilename = file.fileUrl ? file.fileUrl.split('/').pop() : '';
-                        const fileUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/channels/${channelId}/files/${encodeURIComponent(storedFilename)}`;
+                        const fileUrl = `${import.meta.env.VITE_BACKEND_URL}/api/channels/${channelId}/files/${encodeURIComponent(storedFilename)}`;
                         return (
                           <button
                             key={idx}

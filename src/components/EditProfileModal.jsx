@@ -123,7 +123,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                 <div className="flex items-center gap-5 p-3 rounded-xl bg-surface-container-low border border-white/[0.06]">
                   <div className="relative w-18 h-18 rounded-full overflow-hidden shrink-0 bg-surface-container-high border-2 border-primary/30 flex items-center justify-center group">
                     {avatar ? (
-                      <img src={avatar?.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${avatar}` : avatar} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={avatar?.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL}${avatar}` : avatar} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <span className="material-symbols-outlined text-on-surface-variant text-3xl">person</span>
                     )}
