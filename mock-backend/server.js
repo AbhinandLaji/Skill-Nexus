@@ -248,9 +248,16 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: (origin, callback) => {
+        if (!origin || origin === process.env.FRONTEND_URL || (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL.replace(/\/$/, ''))) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
+app.options('*', cors());
 app.use(express.json());
 // Avatars are public profile images. Chat attachments are served through a
 // channel-authorized download route in routes/channels.js.
