@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import CreateCommunityModal from './CreateCommunityModal';
+import { api } from '../services/api';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -28,11 +29,69 @@ const groupChannels = (channels) => {
 export default function Sidebar({ joinedChannels = [], suggestedChannels = [], isExpanded, isLoading, skills = [], onChannelCreated }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [localChannels, setLocalChannels] = useState(joinedChannels || []);
+  const [suggestedList, setSuggestedList] = useState(suggestedChannels || []);
+  const [joiningChannels, setJoiningChannels] = useState({});
   const navigate = useNavigate();
+
+  const fetchSuggestedChannels = async () => {
+    try {
+      const data = await api.getSuggestedChannels();
+      if (Array.isArray(data)) {
+        setSuggestedList(data);
+      }
+    } catch (err) {
+      console.error('Failed to load suggested channels:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchSuggestedChannels();
+  }, []);
 
   useEffect(() => {
     setLocalChannels(joinedChannels || []);
   }, [joinedChannels]);
+
+  useEffect(() => {
+    if (suggestedChannels && suggestedChannels.length > 0 && suggestedList.length === 0) {
+      setSuggestedList(suggestedChannels);
+    }
+  }, [suggestedChannels]);
+
+  const handleJoinChannel = async (e, channel) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const chanId = channel.id || channel._id;
+    if (!chanId) return;
+
+    setJoiningChannels(prev => ({ ...prev, [chanId]: true }));
+    try {
+      await api.joinChannel(chanId);
+      // Remove from suggested list
+      setSuggestedList(prev => prev.filter(c => (c.id !== chanId && c._id !== chanId)));
+      // Add to localChannels
+      const joinedChan = {
+        ...channel,
+        id: chanId,
+        _id: chanId,
+        memberCount: (channel.memberCount || 1) + 1,
+        isMember: true
+      };
+      setLocalChannels(prev => {
+        const exists = prev.some(c => (c.id === chanId || c._id === chanId));
+        if (exists) return prev;
+        return [joinedChan, ...prev];
+      });
+      if (onChannelCreated) {
+        onChannelCreated(joinedChan);
+      }
+      navigate(`/dashboard/channels/${chanId}`);
+    } catch (err) {
+      console.error('Failed to join channel:', err);
+    } finally {
+      setJoiningChannels(prev => ({ ...prev, [chanId]: false }));
+    }
+  };
 
   const handleChannelSuccess = (newChannel) => {
     const formattedChan = {
@@ -253,7 +312,7 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
             </div>
 
             {/* Suggested Channels */}
-            {suggestedChannels.length > 0 && (
+            {suggestedList.length > 0 && (
               <div>
                 {isExpanded && (
                   <h3 className="font-mono-sm text-on-tertiary-container uppercase tracking-wider text-xs px-4 mb-2 whitespace-nowrap">
@@ -261,34 +320,44 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                   </h3>
                 )}
                 <div className="space-y-1">
-                  {groupChannels(suggestedChannels).map(([category, categoryChannels]) => (
+                  {groupChannels(suggestedList).map(([category, categoryChannels]) => (
                     <div key={`suggested-${category}`}>
                       {isExpanded && <p className="px-4 pt-2 pb-1 text-[10px] font-mono-sm uppercase tracking-wider text-on-surface-variant/70">{category}</p>}
                       {categoryChannels.map(channel => {
+                        const chanId = channel.id || channel._id;
                         const skill = skills?.find(s => s.id === channel.skillId);
+                        const isJoining = joiningChannels[chanId];
                         return (
-                          <motion.div key={channel.id} variants={itemVariants}>
-                            <NavLink
-                              to={`/dashboard/channels/${channel.id}`}
-                              title={channel.name}
-                              className={({ isActive }) =>
-                                `group flex items-center justify-between py-2 rounded-lg transition-all duration-300 ${
-                                  isActive 
-                                    ? 'bg-surface-variant text-on-surface ring-1 ring-white/[0.08]' 
-                                    : 'text-on-surface-variant hover:bg-surface-variant'
-                                } ${isExpanded ? 'px-4' : 'px-0 justify-center'}`
-                              }
-                            >
-                              <div className={`flex items-center min-w-0 ${isExpanded ? 'gap-3 flex-1' : 'justify-center w-full'}`}>
+                          <motion.div key={chanId} variants={itemVariants}>
+                            <div className={`group flex items-center justify-between rounded-lg hover:bg-surface-variant transition-all duration-300 ${isExpanded ? 'px-3 pr-2' : 'px-0 justify-center'}`}>
+                              <NavLink
+                                to={`/dashboard/channels/${chanId}`}
+                                title={`Preview ${channel.name}`}
+                                className={({ isActive }) =>
+                                  `flex items-center min-w-0 flex-1 py-2 text-on-surface-variant hover:text-on-surface transition-colors ${isActive ? 'text-primary font-medium' : ''} ${isExpanded ? 'gap-2.5' : 'justify-center w-full'}`
+                                }
+                              >
                                 <span 
-                                  className="material-symbols-outlined text-[20px] shrink-0"
+                                  className="material-symbols-outlined text-[18px] shrink-0"
                                   style={{ color: skill?.colorAccent || '#8c937e' }}
                                 >
                                   {channel.channelType === 'voice' ? 'volume_up' : channel.channelType === 'forum' ? 'forum' : 'tag'}
                                 </span>
-                                {isExpanded && <span className="truncate max-w-[170px]">{channel.name}</span>}
-                              </div>
-                            </NavLink>
+                                {isExpanded && <span className="truncate max-w-[120px] text-xs">{channel.name}</span>}
+                              </NavLink>
+
+                              {isExpanded && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleJoinChannel(e, channel)}
+                                  disabled={isJoining}
+                                  className="text-[11px] font-mono-sm px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary hover:text-on-primary transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                                  title={`Join ${channel.name}`}
+                                >
+                                  {isJoining ? '...' : 'Join'}
+                                </button>
+                              )}
+                            </div>
                           </motion.div>
                         );
                       })}

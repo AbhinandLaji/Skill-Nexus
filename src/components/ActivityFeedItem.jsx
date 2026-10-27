@@ -1,41 +1,122 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 
 export default function ActivityFeedItem({ item, colorClass }) {
-  // `item` should match the schema of a message from our DB
-  // For the UI, we'll try to map db.messages to this layout
-  // Or just use the HTML provided if it's static. The user says "The actual dashboard content... activity feed widget".
-  // Since we don't have a specific global feed API, I'll pass item as props and render the layout.
+  const navigate = useNavigate();
+  const [isJoining, setIsJoining] = useState(false);
+  const [isJoined, setIsJoined] = useState(item.isMember || false);
+  const [joinError, setJoinError] = useState('');
+
+  const isCommunityCreated = item.type === 'COMMUNITY_CREATED';
+  const rawChannelName = item.channelName || item.channel?.name || '';
+  const channelDisplayName = rawChannelName ? (rawChannelName.startsWith('#') ? rawChannelName : `#${rawChannelName}`) : '#community';
+  const channelId = item.channelId || item.channel?.id || item.channel?._id || item.channel;
+
+  const handleJoinCommunity = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!channelId || isJoined) {
+      if (channelId) navigate(`/dashboard/channels/${channelId}`);
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinError('');
+    try {
+      await api.joinChannel(channelId);
+      setIsJoined(true);
+      navigate(`/dashboard/channels/${channelId}`);
+    } catch (err) {
+      if (err.message && err.message.toLowerCase().includes('already a member')) {
+        setIsJoined(true);
+        navigate(`/dashboard/channels/${channelId}`);
+      } else {
+        setJoinError(err.message || 'Failed to join');
+      }
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const authorName = item.authorName || item.userName || 'User';
+  const displayText = isCommunityCreated
+    ? `${authorName} created a new community: ${channelDisplayName}`
+    : item.text;
 
   return (
     <div className="relative bg-surface-container-low rounded-lg border border-white/[0.08] p-5 overflow-hidden group">
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass || 'bg-primary'}`}></div>
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorClass || (isCommunityCreated ? 'bg-primary' : 'bg-primary')}`}></div>
 
       <div className="flex gap-4">
         <div className="w-10 h-10 rounded-sm bg-surface-container-high border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
           {item.authorAvatar ? (
-            <img src={item.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL}${item.authorAvatar}` : item.authorAvatar} alt={item.authorName} className="w-full h-full object-cover" />
+            <img src={item.authorAvatar.startsWith('/uploads') ? `${import.meta.env.VITE_BACKEND_URL}${item.authorAvatar}` : item.authorAvatar} alt={authorName} className="w-full h-full object-cover" />
           ) : (
-            <span className="material-symbols-outlined text-on-surface-variant">person</span>
+            <span className="material-symbols-outlined text-on-surface-variant">
+              {isCommunityCreated ? 'hub' : 'person'}
+            </span>
           )}
         </div>
 
         <div className="flex flex-col flex-1 gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-button-text text-button-text text-on-surface">{item.authorName}</span>
+              <span className="font-button-text text-button-text text-on-surface">{authorName}</span>
               <span className="font-mono-sm text-mono-sm text-on-surface-variant/60">• {item.timeAgo || 'Recently'}</span>
             </div>
             <span
               className="font-mono-sm text-mono-sm px-2 py-0.5 rounded-sm border"
-              style={{ color: item.skillColor, borderColor: `${item.skillColor}40`, backgroundColor: `${item.skillColor}15` }}
+              style={{
+                color: item.skillColor || (isCommunityCreated ? '#a855f7' : '#4bb1f9'),
+                borderColor: `${item.skillColor || (isCommunityCreated ? '#a855f7' : '#4bb1f9')}40`,
+                backgroundColor: `${item.skillColor || (isCommunityCreated ? '#a855f7' : '#4bb1f9')}15`
+              }}
             >
-              {item.skillName}
+              {isCommunityCreated ? 'Community' : (item.skillName || 'General')}
             </span>
           </div>
 
           <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-            {item.text}
+            {displayText}
           </p>
+
+          {isCommunityCreated && item.channelDescription && (
+            <p className="text-xs text-on-surface-variant/80 italic mt-0.5">
+              "{item.channelDescription}"
+            </p>
+          )}
+
+          {/* Quick "Join Community" button for COMMUNITY_CREATED activity type */}
+          {isCommunityCreated && (
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleJoinCommunity}
+                disabled={isJoining}
+                className={`font-button-text text-xs px-4 py-1.5 rounded-md transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                  isJoined
+                    ? 'bg-white/10 text-on-surface-variant hover:bg-white/15'
+                    : 'bg-primary text-on-primary hover:bg-primary/90 hover:scale-[1.02]'
+                }`}
+              >
+                {isJoining ? (
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                ) : isJoined ? (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">check</span>
+                    Joined Community
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">group_add</span>
+                    Join Community
+                  </>
+                )}
+              </button>
+              {joinError && <span className="text-xs text-error font-mono-sm">{joinError}</span>}
+            </div>
+          )}
 
           {item.codeSnippet && (
             <div className="bg-surface-dim rounded-sm p-3 mt-2 border border-white/[0.04] font-mono-sm text-mono-sm text-on-surface-variant overflow-x-auto">

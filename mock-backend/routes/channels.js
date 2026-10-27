@@ -4,6 +4,8 @@ const Channel = require('../models/Channel');
 const Message = require('../models/Message');
 const Skill = require('../models/Skill');
 const User = require('../models/User');
+const Activity = require('../models/Activity');
+const Feed = require('../models/Feed');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -84,10 +86,28 @@ const DEFAULT_CHANNELS = [
 // GET /api/channels - List all channels
 router.get('/', protect, async (req, res) => {
     try {
-        const channels = await Channel.find({ $or: [
+        const search = String(req.query.search || req.query.q || '').trim();
+        let filter = { $or: [
             { isPrivate: { $ne: true } }, { admin: req.user._id }, { members: req.user._id },
             { invitations: { $elemMatch: { email: String(req.user.email || '').toLowerCase(), status: 'pending' } } }
-        ] })
+        ] };
+
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            filter = {
+                $and: [
+                    filter,
+                    {
+                        $or: [
+                            { name: searchRegex },
+                            { description: searchRegex }
+                        ]
+                    }
+                ]
+            };
+        }
+
+        const channels = await Channel.find(filter)
             .populate('members', 'name email avatar');
         const response = channels.map((channel) => {
             const invitedOnly = channel.isPrivate && !isMember(channel, req.user._id);
@@ -101,6 +121,23 @@ router.get('/', protect, async (req, res) => {
         return res.json(response);
     } catch (error) {
         return res.status(500).json({ message: 'Failed to load channels' });
+    }
+});
+
+// GET /api/channels/suggested - List public channels user is not currently a member of
+router.get('/suggested', protect, async (req, res) => {
+    try {
+        const currentUserId = req.user._id;
+        const suggested = await Channel.find({
+            isPrivate: { $ne: true },
+            admin: { $ne: currentUserId },
+            members: { $ne: currentUserId }
+        }).populate('members', 'name email avatar');
+
+        return res.json(suggested.map((channel) => formatChannel(channel, currentUserId)));
+    } catch (error) {
+        console.error('Error loading suggested channels:', error);
+        return res.status(500).json({ message: 'Failed to load suggested channels' });
     }
 });
 
@@ -141,6 +178,41 @@ router.post('/', protect, async (req, res) => {
         });
 
         await newChannel.populate('members', 'name email avatar');
+
+        // Create document in Feed / Activity collection with type COMMUNITY_CREATED
+        const activityDoc = {
+            type: 'COMMUNITY_CREATED',
+            user: userId,
+            channel: newChannel._id,
+            channelId: newChannel._id,
+            userName: req.user.name || 'User',
+            userAvatar: req.user.avatar || null,
+            channelName: newChannel.name,
+            channelDescription: newChannel.description || '',
+            text: `${req.user.name || 'User'} created a new community: ${newChannel.name}`
+        };
+
+        try {
+            await Promise.all([
+                Activity.create(activityDoc),
+                Feed.create(activityDoc)
+            ]);
+        } catch (actErr) {
+            console.error('Failed to create community activity record:', actErr);
+        }
+
+        const io = req.app.get('io');
+        io?.emit('activity:created', {
+            ...activityDoc,
+            id: newChannel._id.toString(),
+            createdAt: new Date().toISOString()
+        });
+        io?.emit('feed:new', {
+            ...activityDoc,
+            id: newChannel._id.toString(),
+            createdAt: new Date().toISOString()
+        });
+
         res.status(201).json(formatChannel(newChannel, userId));
     } catch (error) {
         console.error('Error creating channel:', error);

@@ -16,16 +16,35 @@ export default function DashboardHome() {
     async function loadDashboardData() {
       setIsDataLoading(true);
       try {
-        const [questionsData, oppsData, teamsData] = await Promise.all([
+        const [feedData, questionsData, oppsData, teamsData] = await Promise.all([
+          api.getFeed().catch(() => []),
           api.getQuestions().catch(() => []),
           api.getOpportunities().catch(() => []),
           api.getTeamRecommendations().catch(() => [])
         ]);
 
         if (isMounted) {
-          // Live feed from campus discussions / Q&A (NOT matchmaking team listings)
-          const formattedFeed = (questionsData || []).map((q) => ({
+          // Format COMMUNITY_CREATED and activity feed items
+          const formattedActivities = (feedData || []).map((act) => ({
+            id: act.id || act._id,
+            type: act.type || 'COMMUNITY_CREATED',
+            authorName: act.authorName || act.userName || 'Community Member',
+            authorAvatar: act.authorAvatar || act.userAvatar || null,
+            timeAgo: act.timeAgo || 'Recently',
+            skillName: act.channelName ? 'Community' : 'Activity',
+            skillColor: '#a855f7',
+            channelId: act.channelId || (act.channel?._id ? act.channel._id.toString() : null),
+            channelName: act.channelName || act.channel?.name || '',
+            channelDescription: act.channelDescription || act.channel?.description || '',
+            text: act.text || `${act.authorName || 'User'} created a new community: #${act.channelName || ''}`,
+            createdAt: act.createdAt ? new Date(act.createdAt).getTime() : Date.now(),
+            likes: 0
+          }));
+
+          // Live feed from campus discussions / Q&A
+          const formattedQuestions = (questionsData || []).map((q) => ({
             id: q.id || q._id,
+            type: 'DISCUSSION',
             authorName: q.askedByName || 'Campus Member',
             authorAvatar: null,
             timeAgo: 'Discussion',
@@ -35,9 +54,13 @@ export default function DashboardHome() {
             text: (q.answers && q.answers.length > 0)
               ? `${q.answers[0].answeredByName}: "${q.answers[0].text}"`
               : 'Open technical question in Growth Hub.',
+            createdAt: q.createdAt ? new Date(q.createdAt).getTime() : 0,
             likes: q.answerCount || 0
           }));
-          setFeedItems(formattedFeed);
+
+          // Merge activities (such as new communities) and questions
+          const combinedFeed = [...formattedActivities, ...formattedQuestions];
+          setFeedItems(combinedFeed);
 
           setRadarMatches((teamsData || []).slice(0, 3));
 

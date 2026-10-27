@@ -162,11 +162,18 @@ export const api = {
     return uploadFetcher('/users/me/avatar', formData);
   },
 
+  // Global Search & Discovery
+  search: (query) => fetcher(`/search?q=${encodeURIComponent(query)}`),
+
+  // Activity Feed
+  getFeed: () => fetcher('/feed'),
+
   // Skills
   getSkills: () => fetcher('/skills'),
 
   // Channels
   getChannels: () => fetcher('/channels'),
+  getSuggestedChannels: () => fetcher('/channels/suggested'),
   getChannel: (channelId) => fetcher(`/channels/${channelId}`),
   joinChannel: (channelId) => fetcher(`/channels/${channelId}/join`, { method: 'POST' }),
   leaveChannel: (channelId) => fetcher(`/channels/${channelId}/membership`, { method: 'DELETE' }),

@@ -22,6 +22,8 @@ const uploadRoutes = require('./routes/upload');
 const conversationsRoutes = require('./routes/conversations');
 const forumRoutes = require('./routes/forum');
 const eventsRoutes = require('./routes/events');
+const searchRoutes = require('./routes/search');
+const feedRoutes = require('./routes/feed');
 const User = require('./models/User');
 const Channel = require('./models/Channel');
 const Conversation = require('./models/Conversation');
@@ -265,6 +267,9 @@ app.use('/api/channels', channelsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/conversations', conversationsRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/feed', feedRoutes);
+app.use('/api/activities', feedRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
