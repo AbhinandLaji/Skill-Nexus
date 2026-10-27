@@ -249,15 +249,20 @@ io.on('connection', (socket) => {
 // Middleware
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || origin === process.env.FRONTEND_URL || (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL.replace(/\/$/, ''))) {
+        if (
+            !origin ||
+            origin === process.env.FRONTEND_URL ||
+            (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL.replace(/\/$/, '')) ||
+            origin.endsWith('.vercel.app') ||
+            origin.startsWith('http://localhost')
+        ) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
         }
     },
     credentials: true
 }));
-app.options('*', cors());
 app.use(express.json());
 // Avatars are public profile images. Chat attachments are served through a
 // channel-authorized download route in routes/channels.js.
