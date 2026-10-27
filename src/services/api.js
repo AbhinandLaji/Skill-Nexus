@@ -177,6 +177,7 @@ export const api = {
   getChannel: (channelId) => fetcher(`/channels/${channelId}`),
   joinChannel: (channelId) => fetcher(`/channels/${channelId}/join`, { method: 'POST' }),
   leaveChannel: (channelId) => fetcher(`/channels/${channelId}/membership`, { method: 'DELETE' }),
+  deleteChannel: (channelId) => fetcher(`/channels/${channelId}`, { method: 'DELETE' }),
   inviteToChannel: (channelId, email) => fetcher(`/channels/${channelId}/invitations`, {
     method: 'POST', body: JSON.stringify({ email })
   }),

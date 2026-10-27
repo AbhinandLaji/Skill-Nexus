@@ -26,12 +26,33 @@ const groupChannels = (channels) => {
   return [...groups.entries()];
 };
 
-export default function Sidebar({ joinedChannels = [], suggestedChannels = [], isExpanded, isLoading, skills = [], onChannelCreated }) {
+export default function Sidebar({ joinedChannels = [], suggestedChannels = [], isExpanded, isLoading, skills = [], onChannelCreated, onChannelDeleted, user }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [localChannels, setLocalChannels] = useState(joinedChannels || []);
   const [suggestedList, setSuggestedList] = useState(suggestedChannels || []);
   const [joiningChannels, setJoiningChannels] = useState({});
+  const [channelToDelete, setChannelToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
+
+  const handleConfirmDelete = async () => {
+    if (!channelToDelete) return;
+    const chanId = channelToDelete.id || channelToDelete._id;
+    setIsDeleting(true);
+    try {
+      await api.deleteChannel(chanId);
+      setLocalChannels(prev => prev.filter(c => c.id !== chanId && c._id !== chanId));
+      onChannelDeleted?.(chanId);
+      if (typeof window !== 'undefined' && window.location.pathname.includes(chanId)) {
+        navigate('/dashboard');
+      }
+      setChannelToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete channel:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const fetchSuggestedChannels = async () => {
     try {
@@ -273,6 +294,14 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                       {isExpanded && <p className="px-4 pt-2 pb-1 text-[10px] font-mono-sm uppercase tracking-wider text-on-surface-variant/70">{category}</p>}
                       {categoryChannels.map(channel => {
                         const skill = skills?.find(s => s.id === channel.skillId);
+                        const currentUserId = user?.id || user?._id;
+                        const isOwner = Boolean(
+                          channel.isAdmin ||
+                          (currentUserId && (
+                            String(channel.admin) === String(currentUserId) ||
+                            (channel.admin?._id && String(channel.admin._id) === String(currentUserId))
+                          ))
+                        );
                         return (
                           <motion.div key={channel.id} variants={itemVariants}>
                             <NavLink
@@ -296,11 +325,28 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
                                 )}
                                 {isExpanded && <span className="truncate max-w-[170px]">{channel.name}</span>}
                               </div>
-                              {isExpanded && channel.unreadCount > 0 && (
-                                <span className="bg-secondary-container text-on-secondary-container font-mono-sm px-1.5 rounded shrink-0 ml-1">
-                                  {channel.unreadCount}
-                                </span>
-                              )}
+                              <div className="flex items-center">
+                                {isExpanded && channel.unreadCount > 0 && (
+                                  <span className="bg-secondary-container text-on-secondary-container font-mono-sm px-1.5 rounded shrink-0 ml-1">
+                                    {channel.unreadCount}
+                                  </span>
+                                )}
+                                {isExpanded && isOwner && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setChannelToDelete(channel);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-on-surface-variant hover:text-error hover:bg-error/15 rounded transition-all shrink-0 cursor-pointer ml-1"
+                                    title={`Delete ${channel.name}`}
+                                    aria-label={`Delete ${channel.name}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">delete</span>
+                                  </button>
+                                )}
+                              </div>
                             </NavLink>
                           </motion.div>
                         );
@@ -378,6 +424,56 @@ export default function Sidebar({ joinedChannels = [], suggestedChannels = [], i
           onSuccess={handleChannelSuccess}
           skills={skills}
         />
+      )}
+
+      {/* Delete Community Modal in Sidebar */}
+      {channelToDelete && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container border border-white/[0.08] rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-error mb-4">
+              <div className="w-10 h-10 rounded-full bg-error/15 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">warning</span>
+              </div>
+              <div>
+                <h3 className="font-headline-sm text-lg font-semibold text-on-surface">Delete Community</h3>
+                <p className="text-xs text-on-surface-variant font-mono-sm">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+              Are you sure you want to permanently delete <span className="font-semibold text-on-surface">#{channelToDelete.name.replace(/^#/, '')}</span>? All discussions, messages, attachments, and associated events will be permanently removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setChannelToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg text-sm bg-error text-white hover:bg-error/90 transition-colors font-medium flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                    <span>Delete Community</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </aside>
   );

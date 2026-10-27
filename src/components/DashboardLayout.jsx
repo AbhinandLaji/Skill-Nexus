@@ -89,9 +89,17 @@ export default function DashboardLayout() {
   const joinedChannels = Array.from(myCommunitiesMap.values());
   const suggestedChannels = channels.filter(c => !myCommunitiesMap.has(c.id || c._id));
 
+  const handleChannelDeleted = (deletedChannelId) => {
+    setChannels(prev => prev.filter(c => {
+      const cId = c.id || c._id;
+      return cId !== deletedChannelId && c.name !== deletedChannelId && c.name !== `#${deletedChannelId}`;
+    }));
+  };
+
   return (
     <div className="bg-background min-h-screen text-on-background font-body-md flex">
       <Sidebar 
+        user={user}
         joinedChannels={joinedChannels} 
         suggestedChannels={suggestedChannels} 
         isExpanded={isSidebarExpanded}
@@ -104,6 +112,7 @@ export default function DashboardLayout() {
             return [newChan, ...prev];
           });
         }}
+        onChannelDeleted={handleChannelDeleted}
       />
       
       <div 
@@ -124,7 +133,8 @@ export default function DashboardLayout() {
             },
             onResetChannelUnread: (targetChannelId) => {
               setChannels(prev => prev.map(c => ((c.id || c._id) === targetChannelId || c.name === targetChannelId || c.name === `#${targetChannelId}`) ? { ...c, unreadCount: 0 } : c));
-            }
+            },
+            onChannelDeleted: handleChannelDeleted
           }} />
         </main>
       </div>

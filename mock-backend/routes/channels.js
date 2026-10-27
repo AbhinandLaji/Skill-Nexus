@@ -279,6 +279,100 @@ router.delete('/:id/membership', protect, async (req, res) => {
     }
 });
 
+// DELETE /api/channels/:id - Delete a channel created by the user
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const channel = await Channel.findOne(findChannelQuery(req.params.id));
+        if (!channel) return res.status(404).json({ message: 'Channel not found' });
+        if (idOf(channel.admin) !== idOf(req.user._id)) {
+            return res.status(403).json({ message: 'Only the channel creator/admin can delete this channel.' });
+        }
+
+        const channelIdStr = channel._id.toString();
+
+        // 1. Delete associated messages
+        await Message.deleteMany({
+            $or: [
+                { channelId: channel._id },
+                { channelId: channelIdStr },
+                { channelId: channel.name }
+            ]
+        });
+
+        // 2. Delete associated activities and feeds
+        await Promise.all([
+            Activity.deleteMany({
+                $or: [
+                    { channel: channel._id },
+                    { channelId: channel._id },
+                    { channelId: channelIdStr }
+                ]
+            }),
+            Feed.deleteMany({
+                $or: [
+                    { channel: channel._id },
+                    { channelId: channel._id },
+                    { channelId: channelIdStr }
+                ]
+            })
+        ]);
+
+        // 3. Delete forum posts & community events if any
+        try {
+            const ForumPost = require('../models/ForumPost');
+            await ForumPost.deleteMany({ channelId: channel._id });
+        } catch {
+            // ignore if model not present
+        }
+
+        try {
+            const CommunityEvent = require('../models/CommunityEvent');
+            await CommunityEvent.deleteMany({ channelId: channel._id });
+        } catch {
+            // ignore if model not present
+        }
+
+        try {
+            const Notification = require('../models/Notification');
+            await Notification.deleteMany({ targetId: channelIdStr });
+        } catch {
+            // ignore if model not present
+        }
+
+        // 4. Delete the channel itself
+        await Channel.deleteOne({ _id: channel._id });
+
+        // 5. Notify via Socket.IO
+        const io = req.app.get('io');
+        const room = `channel:${channelIdStr}`;
+        io?.to(room).emit('channel:deleted', { channelId: channelIdStr });
+        io?.emit('channel:removed', { channelId: channelIdStr });
+
+        // Disconnect sockets from the room
+        const sockets = await io?.in(room).fetchSockets();
+        if (sockets && sockets.length) {
+            for (const socket of sockets) {
+                await socket.leave(room);
+            }
+        }
+
+        const voiceRoom = `voice:${channelIdStr}`;
+        const voiceSockets = await io?.in(voiceRoom).fetchSockets();
+        if (voiceSockets && voiceSockets.length) {
+            for (const socket of voiceSockets) {
+                io?.to(voiceRoom).emit('voice:participant-left', socket.id);
+                socket.data.voiceRooms?.delete(channelIdStr);
+                await socket.leave(voiceRoom);
+            }
+        }
+
+        return res.json({ message: 'Channel deleted successfully', channelId: channelIdStr });
+    } catch (error) {
+        console.error('Error deleting channel:', error);
+        return res.status(500).json({ message: 'Failed to delete channel', error: error.message });
+    }
+});
+
 router.post('/:id/invitations', protect, async (req, res) => {
     try {
         const channel = await Channel.findById(req.params.id);

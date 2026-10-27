@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 import ChatArea from '../components/ChatArea';
@@ -21,7 +21,8 @@ const mergeMessages = (...groups) => {
 
 export default function ChannelView() {
   const { channelId } = useParams();
-  const { channels = [], onChannelUpdated, onResetChannelUnread, user } = useOutletContext() || {};
+  const navigate = useNavigate();
+  const { channels = [], onChannelUpdated, onResetChannelUnread, onChannelDeleted, user } = useOutletContext() || {};
   const currentUserId = user?.id || user?._id;
   const [messages, setMessages] = useState([]);
   const [channel, setChannel] = useState(null);
@@ -30,6 +31,7 @@ export default function ChannelView() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [notice, setNotice] = useState('');
   const [showMembers, setShowMembers] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isPinnedOpen, setIsPinnedOpen] = useState(false);
   const [isFilesOpen, setIsFilesOpen] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
@@ -107,11 +109,21 @@ export default function ChannelView() {
       setMessages((previous) => previous.map((message) => (message.id === parentMessageId || message._id === parentMessageId) ? { ...message, threadCount } : message));
     };
 
+    const handleChannelDeletedSocket = (payload) => {
+      const deletedId = String(payload?.channelId || payload || '');
+      const curId = String(channel?.id || channel?._id || channelId || '');
+      if (deletedId && (deletedId === curId || deletedId === String(channelId))) {
+        onChannelDeleted?.(deletedId);
+        navigate('/dashboard');
+      }
+    };
+
     socket.on('connect', joinChannel);
     socket.on('message:new', handleMessageNew);
     socket.on('channel:message', handleMessageNew);
     socket.on('channel:message-updated', handleMessageUpdated);
     socket.on('channel:thread-reply', handleThreadReply);
+    socket.on('channel:deleted', handleChannelDeletedSocket);
 
     if (socket.connected) {
       joinChannel();
@@ -126,8 +138,9 @@ export default function ChannelView() {
       socket.off('channel:message', handleMessageNew);
       socket.off('channel:message-updated', handleMessageUpdated);
       socket.off('channel:thread-reply', handleThreadReply);
+      socket.off('channel:deleted', handleChannelDeletedSocket);
     };
-  }, [channelId, currentUserId]);
+  }, [channelId, currentUserId, channel?.id, channel?._id, navigate, onChannelDeleted]);
 
   useEffect(() => {
     if (!isPinnedOpen || !channelId) return;
@@ -165,6 +178,23 @@ export default function ChannelView() {
       setMessages([]); setNotice('You left this channel.');
     } catch (err) { setChannelError(err.message || 'Unable to leave this channel.'); }
     finally { setBusy(false); }
+  };
+
+  const handleDeleteChannel = async () => {
+    setBusy(true);
+    setChannelError('');
+    try {
+      const targetId = currentChannel?.id || currentChannel?._id || channelId;
+      await api.deleteChannel(targetId);
+      setShowDeleteModal(false);
+      onChannelDeleted?.(targetId);
+      navigate('/dashboard');
+    } catch (err) {
+      setChannelError(err.message || 'Unable to delete channel.');
+      setShowDeleteModal(false);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleInvite = async (event) => {
@@ -245,10 +275,21 @@ export default function ChannelView() {
             </form>
           )}
           {!isMember ? (
-            <button onClick={handleJoin} disabled={busy} className="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm">{busy ? 'Please wait…' : 'Join channel'}</button>
+            <button onClick={handleJoin} disabled={busy} className="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm cursor-pointer">{busy ? 'Please wait…' : 'Join channel'}</button>
           ) : !currentChannel?.isAdmin ? (
-            <button onClick={handleLeave} disabled={busy} className="px-3 py-2 rounded-lg bg-surface-container text-on-surface text-sm">Leave</button>
-          ) : null}
+            <button onClick={handleLeave} disabled={busy} className="px-3 py-2 rounded-lg bg-surface-container text-on-surface text-sm cursor-pointer">Leave</button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              disabled={busy}
+              className="px-3 py-2 rounded-lg border border-error/30 text-error hover:bg-error hover:text-white transition-all duration-200 text-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Delete Community"
+            >
+              <span className="material-symbols-outlined text-[16px]">delete</span>
+              <span>Delete Community</span>
+            </button>
+          )}
           {isMember && <button type="button" onClick={() => setShowEvents((value) => !value)} className={`px-3 py-2 rounded-lg text-sm ${showEvents ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface'}`}><span className="material-symbols-outlined align-middle text-[18px] mr-1">event</span>Events</button>}
           
           {/* Pinned Messages - kept in code but hidden per requirement 10 */}
@@ -439,6 +480,56 @@ export default function ChannelView() {
         )}
       </AnimatePresence>
       {threadMessage && <MessageThread key={`${channelId}:${threadMessage.id}`} channelId={channelId} parentMessage={threadMessage} onClose={() => setThreadMessage(null)} onReplyCountChanged={updateThreadCount} />}
+
+      {/* Delete Community Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container border border-white/[0.08] rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-error mb-4">
+              <div className="w-10 h-10 rounded-full bg-error/15 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">warning</span>
+              </div>
+              <div>
+                <h3 className="font-headline-sm text-lg font-semibold text-on-surface">Delete Community</h3>
+                <p className="text-xs text-on-surface-variant font-mono-sm">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+              Are you sure you want to permanently delete <span className="font-semibold text-on-surface">#{displayChannelName}</span>? All discussions, messages, attachments, and associated events will be permanently removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={busy}
+                className="px-4 py-2 rounded-lg text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteChannel}
+                disabled={busy}
+                className="px-4 py-2 rounded-lg text-sm bg-error text-white hover:bg-error/90 transition-colors font-medium flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {busy ? (
+                  <>
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                    <span>Delete Community</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
