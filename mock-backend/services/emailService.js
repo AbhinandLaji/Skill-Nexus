@@ -23,10 +23,12 @@ const getEmailConfig = () => {
     return {
         transport: {
             host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
-            auth: { user, pass },
-            tls: { rejectUnauthorized: false }
+            port: 587,
+            secure: false,
+            requireTLS: true,
+            tls: { rejectUnauthorized: false },
+            family: 4,
+            auth: { user, pass }
         },
         from: process.env.EMAIL_FROM || user
     };
