@@ -2,7 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getRealtimeSocket } from '../services/realtime';
 
 const rtcConfiguration = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' }
+  ]
 };
 
 export default function DirectCall({ conversationId, mode, onLeave }) {

@@ -25,8 +25,7 @@ router.post('/', protect, (req, res) => {
         }
 
         const ext = req.file.originalname.split('.').pop().toUpperCase();
-        // Construct the static path served by express.static
-        const fileUrl = `/uploads/attachments/${req.file.filename}`;
+        const fileUrl = req.file.path || req.file.secure_url || `/uploads/attachments/${req.file.filename}`;
 
         return res.status(200).json({
             message: 'File uploaded successfully',

@@ -7,16 +7,27 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Standard React/Vite build directories
 node_modules
 dist
 dist-ssr
-*.local
+build
 
-# Local environment secrets
+# Local environment files
 .env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
 .env.*
 !.env.example
+*.local
+
+# Backend environment files
 mock-backend/.env
+mock-backend/.env.local
+mock-backend/.env.development
 mock-backend/.env.*
 !mock-backend/.env.example
 

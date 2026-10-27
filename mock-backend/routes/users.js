@@ -96,7 +96,7 @@ router.post('/me/avatar', protect, (req, res) => {
         }
 
         try {
-            const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+            const avatarUrl = req.file.path || req.file.secure_url || `/uploads/avatars/${req.file.filename}`;
             const user = await User.findByIdAndUpdate(
                 req.user._id,
                 { $set: { avatar: avatarUrl } },
