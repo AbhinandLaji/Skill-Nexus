@@ -109,6 +109,7 @@ router.post('/register', async (req, res) => {
         try {
             delivery = await sendOtpEmail({ to: normalizedEmail, otp, name: user.name });
         } catch (mailError) {
+            await User.findByIdAndDelete(user._id);
             return res.status(503).json({ message: mailError.message, requireOtp: true, email: normalizedEmail });
         }
 

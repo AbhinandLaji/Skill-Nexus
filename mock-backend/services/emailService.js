@@ -20,7 +20,16 @@ const getEmailConfig = () => {
         };
     }
 
-    return { transport: { service: 'gmail', auth: { user, pass } }, from: process.env.EMAIL_FROM || user };
+    return {
+        transport: {
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: { user, pass },
+            tls: { rejectUnauthorized: false }
+        },
+        from: process.env.EMAIL_FROM || user
+    };
 };
 
 const generateOtp = () => crypto.randomInt(100000, 1000000).toString();
@@ -56,12 +65,12 @@ const sendOtpEmail = async ({ to, otp, name = 'Student' }) => {
         console.log(`[Email Service] Verification code dispatched to ${to} (Message ID: ${info.messageId})`);
         return { delivered: true };
     } catch (error) {
-        console.error('[Email Service] SMTP delivery failed:', error.message);
+        console.error('[Email Service] SMTP delivery failed:', error);
         if (developmentFallback) {
             console.warn(`[Email Service] Development OTP for ${to}: ${otp}`);
             return { delivered: false, devOtp: otp };
         }
-        throw new Error('Email delivery failed. Check your SMTP host, username, password, and provider settings.');
+        throw error;
     }
 };
 
