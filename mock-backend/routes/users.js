@@ -5,7 +5,6 @@ const { uploadAvatar } = require('../middleware/upload');
 
 const router = express.Router();
 
-// Helper to format user response
 const formatUser = (user) => ({
     id: user._id.toString(),
     _id: user._id.toString(),
@@ -20,7 +19,6 @@ const formatUser = (user) => ({
     projects: user.projects || []
 });
 
-// GET /api/users/me - Get current logged-in user
 router.get('/me', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-password');
@@ -33,7 +31,6 @@ router.get('/me', protect, async (req, res) => {
     }
 });
 
-// PATCH /api/users/me - Update current user profile or skills
 router.patch('/me', protect, async (req, res) => {
     try {
         const allowedUpdates = ['name', 'skills', 'bio', 'batch', 'avatar', 'isMentor', 'stats', 'projects'];
@@ -57,14 +54,11 @@ router.patch('/me', protect, async (req, res) => {
 
         if (req.body.skills && Array.isArray(req.body.skills)) {
             const Channel = require('../models/Channel');
-            // Find all channels associated with the selected skills
             const matchedChannels = await Channel.find({ skillId: { $in: req.body.skills } });
 
-            // Add the user to each matched channel's members array
             for (const channel of matchedChannels) {
                 const isMember = (channel.members || []).some(m => String(m) === String(req.user._id));
                 if (!isMember) {
-                    // Use findByIdAndUpdate to bypass strict schema validation on legacy documents
                     await Channel.findByIdAndUpdate(
                         channel._id,
                         { $addToSet: { members: req.user._id }, $inc: { memberCount: 1 } },
@@ -75,7 +69,6 @@ router.patch('/me', protect, async (req, res) => {
         }
 
         const formatted = formatUser(user);
-        // Returning formatted object with user property for compatibility with both handlers
         return res.json({
             user: formatted,
             ...formatted
@@ -85,7 +78,6 @@ router.patch('/me', protect, async (req, res) => {
     }
 });
 
-// POST /api/users/me/avatar - Upload profile avatar image
 router.post('/me/avatar', protect, (req, res) => {
     uploadAvatar.single('avatar')(req, res, async (err) => {
         if (err) {
@@ -96,7 +88,7 @@ router.post('/me/avatar', protect, (req, res) => {
         }
 
         try {
-            const avatarUrl = req.file.path || req.file.secure_url || `/uploads/avatars/${req.file.filename}`;
+            const avatarUrl = `/uploads/avatars/${req.file.filename}`;
             const user = await User.findByIdAndUpdate(
                 req.user._id,
                 { $set: { avatar: avatarUrl } },
@@ -120,8 +112,6 @@ router.post('/me/avatar', protect, (req, res) => {
     });
 });
 
-
-// GET /api/users/:id - Get public profile of a user
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;

@@ -1,26 +1,29 @@
+const fs = require('fs');
+const path = require('path');
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const avatarsDir = path.join(__dirname, '..', 'uploads', 'avatars');
+const attachmentsDir = path.join(__dirname, '..', 'uploads', 'attachments');
 
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: async (req, file) => {
+if (!fs.existsSync(avatarsDir)) {
+    fs.mkdirSync(avatarsDir, { recursive: true });
+}
+if (!fs.existsSync(attachmentsDir)) {
+    fs.mkdirSync(attachmentsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
         if (file.fieldname === 'avatar') {
-            return {
-                folder: 'skill-nexus/avatars',
-                allowed_formats: ['jpeg', 'jpg', 'png', 'webp', 'gif']
-            };
+            cb(null, avatarsDir);
+        } else {
+            cb(null, attachmentsDir);
         }
-        return {
-            folder: 'skill-nexus/attachments',
-            resource_type: 'auto'
-        };
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
     }
 });
 
@@ -49,7 +52,6 @@ const uploadAttachment = multer({
 });
 
 module.exports = {
-    cloudinary,
     storage,
     uploadAvatar,
     uploadAttachment
